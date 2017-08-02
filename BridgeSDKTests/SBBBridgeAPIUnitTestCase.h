@@ -10,9 +10,15 @@
 @import BridgeSDK;
 #import "MockURLSession.h"
 #import "SBBTestBridgeObject.h"
+#import "SBBComponentManager.h"
+#import "SBBCacheManager.h"
 
 @interface SBBBridgeAPIUnitTestCase : XCTestCase
 
 @property (nonatomic, strong) MockURLSession *mockURLSession;
+@property (nonatomic, strong) MockURLSession *mockBackgroundURLSession;
+
+@property (nonatomic, strong) SBBCacheManager *cacheManager;
+@property (nonatomic, strong) id<SBBObjectManagerProtocol> objectManager;
 
 @end

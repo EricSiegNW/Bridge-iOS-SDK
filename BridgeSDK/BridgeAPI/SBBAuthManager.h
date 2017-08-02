@@ -4,7 +4,7 @@
 //
 //  Created by Erin Mounts on 9/11/14.
 //
-//	Copyright (c) 2014, Sage Bionetworks
+//	Copyright (c) 2014-2017, Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -33,9 +33,14 @@
 #import <Foundation/Foundation.h>
 #import "SBBComponent.h"
 #import "SBBNetworkManager.h"
+#import "SBBStudyParticipant.h"
 
-/// Global study identifier, specific to each app. Must be set before attempting to access Bridge APIs, usually by calling the BridgeSDK setupWithStudy: or setupWithStudy:useCache: class method.
-extern  NSString * _Nonnull gSBBAppStudy;
+/// A class derived from SBBStudyParticipant which includes a password field. Use this object when signing up to set any StudyParticipant fields or custom attributes at that time.
+@interface SBBSignUp : SBBStudyParticipant
+
+@property (nonatomic, strong) NSString * _Nullable password;
+
+@end
 
 @protocol SBBAuthManagerProtocol;
 
@@ -71,26 +76,17 @@ extern  NSString * _Nonnull gSBBAppStudy;
 
 /*!
  *  The auth manager will call this delegate method when it obtains a new session token, so that the delegate
- *  can store it appropriately and return it later in sessionTokenForAuthManager: calls.
+ *  can store the new sessionToken as well as the email and password used to obtain it, to be returned later in
+ *  the sessionTokenForAuthManager:, emailForAuthManager:, and passwordForAuthManager: calls, respectively.
  *
- *  @note This method is required.
+ *  This method provides a convenient interface for keeping track of the auth credentials used in the most recent successful signIn, for re-use when automatically refreshing an expired session token.
  *
- *  @param authManager The auth manager instance making the delegate request.
- *  @param sessionToken The session token just obtained by the auth manager.
- */
-- (void)authManager:(nullable id<SBBAuthManagerProtocol>)authManager didGetSessionToken:(nullable NSString *)sessionToken;
-
-@optional
-
-/*!
- *  If you implement this delegate method, the auth manager will call it rather than authManager:didGetSessionToken:
- *  when it obtains a new session token, so that the delegate can store the username and password used,
- *  to be returned later in the emailForAuthManager: and passwordForAuthManager: calls.
- *
- *  @note This method is optional. It provides a convenient interface for keeping track of the auth credentials used in the most recent successful signIn, for re-use when automatically refreshing an expired session token.
+ *  @note This method is now required, and once it has been called, the emailForAuthManager: and passwordForAuthManager: delegate methods must return valid credentials.
  *
  *  @param authManager The auth manager instance making the delegate request.
  *  @param sessionToken The session token just obtained by the auth manager.
+ *  @param email The email used when signing in to obtain this session token.
+ *  @param password The password used when signing in to obtain this session token.
  */
 - (void)authManager:(nullable id<SBBAuthManagerProtocol>)authManager didGetSessionToken:(nullable NSString *)sessionToken forEmail:(nullable NSString *)email andPassword:(nullable NSString *)password;
 
@@ -98,31 +94,54 @@ extern  NSString * _Nonnull gSBBAppStudy;
  *  This delegate method should return the email for the user account last signed up for or signed in to,
  *  or nil if the user has never signed up or signed in on this device.
  *
- *  @note This method is optional. If both this and passwordForAuthManager: are provided by the delegate, the SDK can handle refreshing the session token automatically when 401 status codes are received from the Bridge API.
+ *  @note This method is now required, so that the SDK can handle refreshing the session token automatically when 401 status codes are received from the Bridge API.
  *
  *  @param authManager The auth manager instance making the delegate request.
  *
- *  @return The username, or nil.
+ *  @return The email for the user account, or nil.
  */
 - (nullable NSString *)emailForAuthManager:(nullable id<SBBAuthManagerProtocol>)authManager;
-
-/*!
- * For backward compatibility only. Implement emailForAuthManager: instead, which will always be called by the SDK in preference to this. 
- */
-- (nullable NSString *)usernameForAuthManager:(nullable id<SBBAuthManagerProtocol>)authManager __deprecated;
-
 
 /*!
  *  This delegate method should return the password for the user account last signed up for or signed in to,
  *  or nil if the user has never signed up or signed in on this device.
  *
- *  @note This method is optional. If both this and emailForAuthManager: are provided by the delegate, the SDK can handle refreshing the session token automatically when 401 status codes are received from the Bridge API.
+ *  @note This method is now required. The password is used when encrypting sensitive user data in CoreData, and also for refreshing the session token automatically when 401 status codes are received from the Bridge API.
  *
  *  @param authManager The auth manager instance making the delegate request.
  *
  *  @return The password, or nil.
  */
 - (nullable NSString *)passwordForAuthManager:(nullable id<SBBAuthManagerProtocol>)authManager;
+
+@optional
+
+/*!
+ *  Implement this delegate method if you want the Auth Manager to notify you when it has updated the UserSessionInfo (and StudyParticipant) as a result of signing in, whether due to user action or to auto-refreshing the session token, or signing out. If you use any of the information contained in either of those objects, you should implement this method and update your app's state accordingly each time it's called, so you know you always have the most current versions of those objects and you always know your app's state reflects the current state of the participant's account on the server.
+ *
+ *  @param authManager The auth manager instance making the delegate request.
+ *  @param sessionInfo The new user session info, or nil if signed out. By default, the SBBUserSessionInfo object (which includes a pointer to the SBBStudyParticipant object), unless the UserSessionInfo type has been mapped in SBBObjectManager setupMappingForType:toClass:fieldToPropertyMappings:.
+ */
+- (void)authManager:(nullable id<SBBAuthManagerProtocol>)authManager didReceiveUserSessionInfo:(nullable id)sessionInfo;
+
+/*!
+ *  For backward compatibility only. Implement emailForAuthManager: instead, which will always be called by the SDK in preference to this.
+ *
+ *  @param authManager The auth manager instance making the delegate request.
+ *
+ *  @return The username, or nil.
+ */
+- (nullable NSString *)usernameForAuthManager:(nullable id<SBBAuthManagerProtocol>)authManager __attribute__((deprecated("implement emailForAuthManager: instead")));
+
+/*!
+ *  For backward compatibility only. This method will no longer be called.
+ *
+ *  @deprecated Implement authManager:didGetSessionToken:forEmail:andPassword instead.
+ *
+ *  @param authManager The auth manager instance making the delegate request.
+ *  @param sessionToken The session token just obtained by the auth manager.
+ */
+- (void)authManager:(nullable id<SBBAuthManagerProtocol>)authManager didGetSessionToken:(nullable NSString *)sessionToken __attribute__((deprecated("implement authManager:didGetSessionToken:forEmail:andPassword instead")));
 
 @end
 
@@ -137,9 +156,24 @@ extern  NSString * _Nonnull gSBBAppStudy;
 @property (nonatomic, weak) id<SBBAuthManagerDelegateProtocol> _Nullable authDelegate;
 
 /*!
+ Sign up for an account using a SignUp record, which is basically a StudyParticipant object with a password field.
+ At minimum, the email and password fields must be filled in; in general, you would also want to fill in any of the following
+ information available at sign-up time: firstName, lastName, sharingScope, externalId (if used), dataGroups, notifyByEmail,
+ and any custom attributes you've defined for the attributes field.
+ 
+ @param signUp A SBBSignUp object representing the participant signing up.
+ @param completion A SBBNetworkManagerCompletionBlock to be called upon completion. Optional.
+ 
+ @return An NSURLSessionTask object so you can cancel or suspend/resume the request.
+ */
+- (nonnull NSURLSessionTask *)signUpStudyParticipant:(nonnull SBBSignUp *)signUp completion:(nullable SBBNetworkManagerCompletionBlock)completion;
+
+/*!
  * Sign up for an account with an email address, userName, password, and an optional list of data group tags. 
  * An email will be sent to the specified email address containing a link to verify that this is indeed that
  * person's email. The userName and password won't be valid for signing in until the email has been verified.
+ *
+ * @deprecated Use signUpStudyParticipant:completion: instead.
  *
  * @param email The email address to be associated with the account.
  * @param username The username to use for the account.
@@ -148,11 +182,13 @@ extern  NSString * _Nonnull gSBBAppStudy;
  * @param completion A SBBNetworkManagerCompletionBlock to be called upon completion. Optional.
  * @return An NSURLSessionTask object so you can cancel or suspend/resume the request.
  */
-- (nonnull NSURLSessionTask *)signUpWithEmail:(nonnull NSString *)email username:(nonnull NSString *)username password:(nonnull NSString *)password dataGroups:(nullable NSArray<NSString *> *)dataGroups completion:(nullable SBBNetworkManagerCompletionBlock)completion;
+- (nonnull NSURLSessionTask *)signUpWithEmail:(nonnull NSString *)email username:(nonnull NSString *)username password:(nonnull NSString *)password dataGroups:(nullable NSArray<NSString *> *)dataGroups completion:(nullable SBBNetworkManagerCompletionBlock)completion __attribute__((deprecated("use signUpStudyParticipant:completion: instead")));
 
 /*!
  * Sign up for an account with an email address, userName, and password. This is a convenience method
  * that calls signUpWithEmail:username:password:dataGroups:completion: with dataGroups set to nil.
+ *
+ * @deprecated Use signUpStudyParticipant:withPassword:completion: instead.
  *
  * @param email The email address to be associated with the account.
  * @param username The username to use for the account.
@@ -160,7 +196,7 @@ extern  NSString * _Nonnull gSBBAppStudy;
  * @param completion A SBBNetworkManagerCompletionBlock to be called upon completion. Optional.
  * @return An NSURLSessionTask object so you can cancel or suspend/resume the request.
  */
-- (nonnull NSURLSessionTask *)signUpWithEmail:(nonnull NSString *)email username:(nonnull NSString *)username password:(nonnull NSString *)password completion:(nullable SBBNetworkManagerCompletionBlock)completion;
+- (nonnull NSURLSessionTask *)signUpWithEmail:(nonnull NSString *)email username:(nonnull NSString *)username password:(nonnull NSString *)password completion:(nullable SBBNetworkManagerCompletionBlock)completion __attribute__((deprecated("use signUpStudyParticipant:withPassword:completion: instead")));
 
 /*!
  Request Bridge to re-send the email verification link to the specified email address.
@@ -174,6 +210,13 @@ extern  NSString * _Nonnull gSBBAppStudy;
  @return An NSURLSessionTask object so you can cancel or suspend/resume the request.
  */
 - (nonnull NSURLSessionTask *)resendEmailVerification:(nonnull NSString *)email completion:(nullable SBBNetworkManagerCompletionBlock)completion;
+
+/*!
+ Reset UserSessionInfo and StudyParticipant to a pristine state and notify the auth delegate.
+ 
+ @note This method should only be called if the prospective participant got partway through onboarding/consent, set some values on the StudyParticipant sub-object or its attributes, and decided to cancel or restart the whole process. It does nothing if we're currently authenticated to Bridge (i.e. we have a session token). It also does nothing if there's no auth delegate currently set, since no placeholder objects will have been created.
+ */
+- (void)resetUserSessionInfo;
 
 /*!
  * Sign in to an existing account with an email and password.
@@ -231,12 +274,20 @@ extern  NSString * _Nonnull gSBBAppStudy;
  */
 - (void)addAuthHeaderToHeaders:(nonnull NSMutableDictionary *)headers;
 
+/*!
+ *  This method is used by the Participant Manager to determine whether to propagate StudyParticipant changes to cache
+ *  and to Bridge. Until the participant has successfully signed up and signed in, a placeholder StudyParticipant exists
+ *  for convenience, and will be used to help populate the signUp request JSON.
+ *  @return Whether the auth manager is currently authenticated (has a session token which may or may not be currently valid)
+ */
+- (BOOL)isAuthenticated;
+
 @optional
 
 /*!
  * For backward compatibility only. Use signInWithEmail:password:completion instead (which this method now calls).
  */
-- (nonnull NSURLSessionTask *)signInWithUsername:(nonnull NSString *)username password:(nonnull NSString *)password completion:(nullable SBBNetworkManagerCompletionBlock)completion __deprecated;
+- (nonnull NSURLSessionTask *)signInWithUsername:(nonnull NSString *)username password:(nonnull NSString *)password completion:(nullable SBBNetworkManagerCompletionBlock)completion __attribute__((deprecated("use signInWithEmail:password:completion instead")));
 
 @end
 
@@ -249,7 +300,7 @@ extern  NSString * _Nonnull gSBBAppStudy;
 @interface SBBAuthManager : NSObject<SBBComponent, SBBAuthManagerProtocol>
 
 /*!
- * Return the default (shared) component of this type (SBBAuthManager), configured with the gSBBAppURLPrefix and
+ * Return the default (shared) component of this type (SBBAuthManager), configured with [SBBBridgeInfo shared].studyIdentifer and
  * the default environment. In debug builds, this is SBBEnvironmentStaging; in release builds, SBBEnvironmentProd.
  * Also configures the component to use the SBBNetworkManager currently registered the first time this is called,
  * or the default if none was registered yet.
@@ -265,7 +316,7 @@ extern  NSString * _Nonnull gSBBAppStudy;
  * Use this method directly only if you need to redirect your Bridge API accesses to a test server.
  *
  * @param environment The SBBEnvironment to use (prod, staging, dev).
- * @param study The app-specific study identifier to use (typically set in gSBBAppStudy).
+ * @param study The app-specific study identifier to use (typically set in [SBBBridgeInfo shared].studyIdentifier).
  * @param baseURLPath The URL path to prefix with the app server prefix and environment string (e.g. @"sagebridge.org")
  * @return An SBBAuthManager component configured for an environment, appURLPrefix, and baseURLPath.
  */

@@ -15,12 +15,15 @@
 #import "SBBCacheManager.h"
 #import "SBBTestAuthManagerDelegate.h"
 #import "SBBObjectManagerInternal.h"
+#import "ModelObjectInternal.h"
+#import "SBBBridgeInfo+Internal.h"
 
 @interface SBBObjectManagerUnitTests : XCTestCase
 
 @property (nonatomic, strong) NSDictionary *jsonForTests;
 @property (nonatomic, strong) NSDictionary *mappingForObject;
 @property (nonatomic, strong) NSDictionary *mappingForSubObject;
+@property (nonatomic, strong) SBBCacheManager *cacheManager;
 @property (nonatomic, strong) SBBObjectManager *objectManager;
 
 @end
@@ -30,6 +33,10 @@
 - (void)setUp {
     [super setUp];
     // Put setup code here. This method is called before the invocation of each test method in the class.
+    if (![SBBBridgeInfo shared].studyIdentifier) {
+        [[SBBBridgeInfo shared] setStudyIdentifier:@"ios-sdk-int-tests"];
+        gSBBUseCache = YES;
+    }
     static NSDictionary *json;
     static NSDictionary *objectMapping;
     static NSDictionary *subObjectMapping;
@@ -37,22 +44,22 @@
     dispatch_once(&onceToken, ^{
         NSArray *arrayJson =
         @[
-          @{@"type": @"TestBridgeSubObject", @"stringField": @"thing1"},
-          @{@"type": @"TestBridgeSubObject", @"stringField": @"thing2"},
-          @{@"type": @"TestBridgeSubObject", @"stringField": @"thing3"}
+          @{@"type": [SBBTestBridgeSubObject entityName], @"stringField": @"thing1"},
+          @{@"type": [SBBTestBridgeSubObject entityName], @"stringField": @"thing2"},
+          @{@"type": [SBBTestBridgeSubObject entityName], @"stringField": @"thing3"}
           ];
         
         json =
         @{
           @"guid": @"NotReallyAGuidButShouldWorkIfThere'sOnlyOne",
-          @"type": @"TestBridgeObject",
+          @"type": [SBBTestBridgeObject entityName],
           @"stringField": @"This is a string",
           @"shortField": @-2,
           @"longField": @-3,
           @"longLongField": @-4444444444444444,
-          @"uShortField": @USHRT_MAX,
-          @"uLongField": @0xffffffff,
-          @"uLongLongField": @ULLONG_MAX,
+          @"uShortField": @SHRT_MAX,
+          @"uLongField": @0x7fffffff,
+          @"uLongLongField": @LLONG_MAX,
           @"floatField": @3.7e-3,
           @"doubleField": @6.022e123,
           @"dateField": @"2011-12-03T22:11:34.554Z",
@@ -85,8 +92,11 @@
     SBBTestAuthManagerDelegate *delegate = [SBBTestAuthManagerDelegate new];
     delegate.password = @"123456";
     aMan.authDelegate = delegate;
-    SBBCacheManager *cMan = [SBBCacheManager cacheManagerWithDataModelName:@"TestModel" bundleId:SBBBUNDLEIDSTRING storeType:NSInMemoryStoreType authManager:aMan];
-    _objectManager = [SBBObjectManager objectManagerWithCacheManager:cMan];
+    _cacheManager = [SBBCacheManager cacheManagerWithDataModelName:@"TestModel" bundleId:SBBBUNDLEIDSTRING storeType:NSInMemoryStoreType authManager:aMan];
+    // make sure each test has a unique persistent store (by using the object instance ptr's hex representation as the store name)
+    // so they can run concurrently without tripping over each other
+    _cacheManager.persistentStoreName = [NSString stringWithFormat:@"%p", self];
+    _objectManager = [SBBObjectManager objectManagerWithCacheManager:_cacheManager];
 }
 
 - (void)tearDown {
@@ -103,6 +113,12 @@
     XCTAssert([testObject.bridgeSubObjectField isKindOfClass:[SBBTestBridgeSubObject class]], @"Creates correct subtype for Bridge-object field");
     XCTAssert([testObject.bridgeObjectArrayField[0] isKindOfClass:[SBBTestBridgeSubObject class]], @"Creates correct subtype for Bridge-object array field");
     XCTAssert([testObject.dateField isKindOfClass:[NSDate class]], @"Creates NSDate from string for date field");
+    
+    if (gSBBUseCache) {
+        // now do it again with the same JSON and make sure it gives back the same PONSO object
+        SBBTestBridgeObject *testObject2 = [_objectManager objectFromBridgeJSON:_jsonForTests];
+        XCTAssertEqual(testObject2, testObject, @"Returns same instance from JSON with same entity key");
+    }
 }
 
 - (void)testObjectFromBridgeJSONWithMapping {

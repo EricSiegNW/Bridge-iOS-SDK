@@ -9,6 +9,9 @@
 #import "SBBBridgeAPIIntegrationTestCase.h"
 #import "SBBConsentManagerInternal.h"
 #import "SBBTestAuthManagerDelegate.h"
+#import "SBBParticipantManagerInternal.h"
+#import "SBBCacheManager.h"
+#import "ModelObjectInternal.h"
 
 @interface SBBConsentManagerIntegrationTests : SBBBridgeAPIIntegrationTestCase
 
@@ -19,76 +22,19 @@
 
 @implementation SBBConsentManagerIntegrationTests
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 - (void)setUp {
     [super setUp];
     // Put setup code here. This method is called before the invocation of each test method in the class.
-    XCTestExpectation *expectAddedRequiredSubpop = [self expectationWithDescription:@"required subpop added"];
     
-    [self createSubpopulation:@"bridge-ios-sdk-required-subpop-test" forGroups:@[@"sdk-int-1"] notGroups:nil required:YES withCompletion:^(NSString *subpopGuid, id responseObject, NSError *error) {
-        if (error) {
-            NSLog(@"Error creating required test subpop:\n%@\nResponse: %@", error, responseObject);
-        } else {
-            NSLog(@"Created required test subpop:\n%@", responseObject);
-            self.testSubpopRequiredGuid = subpopGuid;
-        }
-        [expectAddedRequiredSubpop fulfill];
-    }];
-    
-    XCTestExpectation *expectAddedOptionalSubpop = [self expectationWithDescription:@"optional subpop added"];
-    
-    [self createSubpopulation:@"bridge-ios-sdk-optional-subpop-test" forGroups:@[@"sdk-int-1"] notGroups:@[@"sdk-int-2"] required:NO withCompletion:^(NSString *subpopGuid, id responseObject, NSError *error) {
-        if (error) {
-            NSLog(@"Error creating optional test subpop:\n%@\nResponse: %@", error, responseObject);
-        } else {
-            NSLog(@"Created optional test subpop:\n%@", responseObject);
-            self.testSubpopOptionalGuid = subpopGuid;
-        }
-        [expectAddedOptionalSubpop fulfill];
-    }];
-    
-    [self waitForExpectationsWithTimeout:15.0 handler:^(NSError *error) {
-        if (error) {
-            NSLog(@"Timeout creating test subpopulations: %@", error);
-        }
-    }];    
+    self.testSubpopOptionalGuid = @"0c132b61-f5fd-4e75-9813-5b7dce04cdd7";
+    self.testSubpopRequiredGuid = @"cfbbbaed-bf7a-4b20-aad8-f649a7e6e7fc";
 }
 
 - (void)tearDown {
     // Put teardown code here. This method is called after the invocation of each test method in the class.
-    if (self.testSubpopRequiredGuid) {
-        XCTestExpectation *expectDeletedRequiredSubpop = [self expectationWithDescription:@"required subpop deleted"];
-        
-        [self deleteSubpopulation:self.testSubpopRequiredGuid completionHandler:^(NSURLSessionTask *task, id responseObject, NSError *error) {
-            if (error) {
-                NSLog(@"Error deleting required test subpop:\n%@\nResponse: %@", error, responseObject);
-            } else {
-                NSLog(@"Deleted required test subpop:\n%@", responseObject);
-                self.testSubpopRequiredGuid = nil;
-            }
-            [expectDeletedRequiredSubpop fulfill];
-        }];
-    }
-    
-    if (self.testSubpopOptionalGuid) {
-        XCTestExpectation *expectDeletedOptionalSubpop = [self expectationWithDescription:@"optional subpop deleted"];
-        
-        [self deleteSubpopulation:self.testSubpopOptionalGuid completionHandler:^(NSURLSessionTask *task, id responseObject, NSError *error) {
-            if (error) {
-                NSLog(@"Error deleting optional test subpop:\n%@\nResponse: %@", error, responseObject);
-            } else {
-                NSLog(@"Deleted optional test subpop:\n%@", responseObject);
-                self.testSubpopOptionalGuid = nil;
-            }
-            [expectDeletedOptionalSubpop fulfill];
-        }];
-    }
-    
-    
-    [self waitForExpectationsWithTimeout:15.0 handler:^(NSError *error) {
-        if (error) {
-            NSLog(@"Timeout deleting test subpopulations: %@", error);
-        }
-    }];
    
     [super tearDown];
 }
@@ -116,7 +62,7 @@
                     [expectSigned fulfill];
                 } else {
                     unconsentedId = responseObject[kUserSessionInfoIdKey];
-                    [cMan consentSignature:@"Eggplant McTester" birthdate:[NSDate dateWithTimeIntervalSinceNow:-(30 * 365.25 * 86400)] signatureImage:signatureImage dataSharing:SBBUserDataSharingScopeStudy completion:^(id responseObject, NSError *error) {
+                    [cMan consentSignature:@"Eggplant McTester" birthdate:[NSDate dateWithTimeIntervalSinceNow:-(30 * 365.25 * 86400)] signatureImage:signatureImage dataSharing:SBBParticipantDataSharingScopeStudy completion:^(id responseObject, NSError *error) {
                         if (error) {
                             NSLog(@"Error recording consent signature:\n%@\nResponse: %@", error, responseObject);
                         }
@@ -153,7 +99,7 @@
     SBBAuthManager *aMan = [SBBAuthManager authManagerWithNetworkManager:SBBComponent(SBBNetworkManager)];
     SBBTestAuthManagerDelegate *delegate = [SBBTestAuthManagerDelegate new];
     aMan.authDelegate = delegate;
-    SBBUserManager *uMan = [SBBUserManager managerWithAuthManager:aMan networkManager:SBBComponent(SBBBridgeNetworkManager) objectManager:SBBComponent(SBBObjectManager)];
+    SBBParticipantManager *pMan = [SBBParticipantManager managerWithAuthManager:aMan networkManager:SBBComponent(SBBBridgeNetworkManager) objectManager:SBBComponent(SBBObjectManager)];
     SBBConsentManager *cMan = [SBBConsentManager managerWithAuthManager:aMan networkManager:SBBComponent(SBBBridgeNetworkManager) objectManager:SBBComponent(SBBObjectManager)];
     UIImage *signatureImage = [UIImage imageNamed:@"sample-signature" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
     XCTestExpectation *expectSigned = [self expectationWithDescription:@"consent signature recorded"];
@@ -166,38 +112,43 @@
     NSDate *birthdate = [NSDate dateWithTimeIntervalSinceNow:-(30 * 365.25 * 86400)];
     
     [self createTestUserConsented:NO roles:@[] completionHandler:^(NSString *emailAddress, NSString *password, id responseObject, NSError *error) {
+        XCTAssert(!error, @"Error creating unconsented user %@:\n%@\nResponse: %@", unconsentedEmail, error, responseObject);
         if (error) {
-            NSLog(@"Error creating unconsented user %@:\n%@\nResponse: %@", unconsentedEmail, error, responseObject);
             [expectSigned fulfill];
         } else {
             unconsentedEmail = emailAddress;
-            NSArray *dataGroups = @[@"sdk-int-1", @"sdk-int-2"];
+            NSSet *dataGroups = [NSSet setWithArray:@[@"sdk-int-1", @"sdk-int-2"]];
             [aMan signInWithEmail:emailAddress password:password completion:^(NSURLSessionTask *task, id responseObject, NSError *error) {
-                if (error && error.code != SBBErrorCodeServerPreconditionNotMet) {
-                    NSLog(@"Error signing in unconsented user %@:\n%@\nResponse: %@", unconsentedEmail, error, responseObject);
+                BOOL relevantError = (error && error.code != SBBErrorCodeServerPreconditionNotMet);
+                XCTAssert(!relevantError, @"Error signing in unconsented user %@:\n%@\nResponse: %@", unconsentedEmail, error, responseObject);
+                if (relevantError) {
                     [expectSigned fulfill];
                 } else {
                     unconsentedId = responseObject[kUserSessionInfoIdKey];
                     // sign default (required) consent first
-                    [cMan consentSignature:signname forSubpopulationGuid:gSBBAppStudy birthdate:birthdate signatureImage:signatureImage dataSharing:SBBUserDataSharingScopeStudy completion:^(id  _Nullable responseObject, NSError * _Nullable error) {
+                    SBBParticipantDataSharingScope scope = SBBParticipantDataSharingScopeStudy;
+                    [cMan consentSignature:signname forSubpopulationGuid:[SBBBridgeInfo shared].studyIdentifier birthdate:birthdate signatureImage:signatureImage dataSharing:scope completion:^(id  _Nullable responseObject, NSError * _Nullable error) {
+                        XCTAssert(!error, @"Error recording default consent signature:\n%@\nResponse: %@", error, responseObject);
                         if (error) {
-                            NSLog(@"Error recording default consent signature:\n%@\nResponse: %@", error, responseObject);
                             [expectSigned fulfill];
                         } else {
+                            // verify that the cached participant manager got updated
+                            if (gSBBUseCache) {
+                                NSString *participantType = [SBBStudyParticipant entityName];
+                                SBBStudyParticipant *cachedParticipant = (SBBStudyParticipant *)[pMan.cacheManager cachedSingletonObjectOfType:participantType createIfMissing:NO];
+                                XCTAssertEqualObjects(cachedParticipant.sharingScope, kSBBParticipantDataSharingScopeStrings[scope], "Cached participant scope: expected %@, got %@", kSBBParticipantDataSharingScopeStrings[scope], cachedParticipant.sharingScope);
+                            }
                             // add to subpopulation that has its own required consent
-                            [uMan addToDataGroups:dataGroups completion:^(id responseObject, NSError *error) {
-                                if (error && error.code != SBBErrorCodeServerPreconditionNotMet) {
-                                    NSLog(@"Error adding user %@ to groups %@:\n%@\nResponse: %@", unconsentedEmail, dataGroups, error, responseObject);
+                            [pMan addToDataGroups:dataGroups completion:^(id responseObject, NSError *error) {
+                                BOOL relevantError = (error && error.code != SBBErrorCodeServerPreconditionNotMet);
+                                XCTAssert(!relevantError, @"Error adding user %@ to groups %@:\n%@\nResponse: %@", unconsentedEmail, dataGroups, error, responseObject);
+                                if (relevantError) {
                                     [expectSigned fulfill];
                                 } else {
                                     // sign subpopulation consent
-                                    [cMan consentSignature:signname forSubpopulationGuid:self.testSubpopRequiredGuid birthdate:birthdate signatureImage:signatureImage dataSharing:SBBUserDataSharingScopeStudy completion:^(id responseObject, NSError *error) {
-                                        if (error) {
-                                            NSLog(@"Error recording subpop consent signature:\n%@\nResponse: %@", error, responseObject);
-                                        } else {
-                                            consentSigned = YES;
-                                        }
-                                        XCTAssert(!error, @"Successfully recorded subpop consent signature");
+                                    [cMan consentSignature:signname forSubpopulationGuid:self.testSubpopRequiredGuid birthdate:birthdate signatureImage:signatureImage dataSharing:SBBParticipantDataSharingScopeStudy completion:^(id responseObject, NSError *error) {
+                                        XCTAssert(!error, @"Error recording subpop consent signature:\n%@\nResponse: %@", error, responseObject);
+                                        consentSigned = !error;
                                         [expectSigned fulfill];
                                     }];
                                 }
@@ -209,22 +160,29 @@
         }
     }];
     
-    [self waitForExpectationsWithTimeout:15.0 handler:^(NSError *error) {
+    [self waitForExpectationsWithTimeout:20.0 handler:^(NSError *error) {
         if (error) {
             NSLog(@"Timeout registering subpop consent signature: %@", error);
         }
     }];
     
     if (consentSigned) {
+        // check that UserSessionInfo was updated with the new consent status
+        SBBUserSessionInfo *sessionInfo = (SBBUserSessionInfo *)[SBBComponent(SBBCacheManager) cachedSingletonObjectOfType:SBBUserSessionInfo.entityName createIfMissing:NO];
+        XCTAssert(sessionInfo, @"Failed to retrieve updated UserSessionInfo from cache");
+        if (sessionInfo) {
+            SBBConsentStatus *status = sessionInfo.consentStatuses[self.testSubpopRequiredGuid];
+            XCTAssert(status, @"Failed to retrieve ConsentStatus for %@", self.testSubpopRequiredGuid);
+            if (status) {
+                XCTAssert(status.consentedValue, @"Cached ConsentStatus for %@ does not reflect having consented", self.testSubpopRequiredGuid);
+            }
+        }
         // now try to get it back
         XCTestExpectation *expectReceived = [self expectationWithDescription:@"consent signature received"];
         
         [cMan getConsentSignatureForSubpopulation:self.testSubpopRequiredGuid completion:^(id consentSignature, NSError *error) {
-            if (error) {
-                NSLog(@"Error getting subpop consent signature:\n%@", error);
-            }
-            XCTAssert(!error, @"Successfully retrieved consent signature");
-            XCTAssert([consentSignature isKindOfClass:[SBBConsentSignature class]], @"Converted incoming JSON to SBBConsentSignature");
+            XCTAssert(!error, @"Error getting subpop consent signature:\n%@", error);
+            XCTAssert([consentSignature isKindOfClass:[SBBConsentSignature class]], @"Failed to convert incoming JSON to SBBConsentSignature");
             if ([consentSignature isKindOfClass:[SBBConsentSignature class]]) {
                 SBBConsentSignature *cSig = consentSignature;
                 XCTAssertEqualObjects(cSig.name, signname, @"Name as signed same as name retrieved");
@@ -325,5 +283,7 @@
         NSLog(@"Failed to retrieve test account id for %@, account not deleted", consentedEmail);
     }
 }
+
+#pragma clang diagnostic pop
 
 @end

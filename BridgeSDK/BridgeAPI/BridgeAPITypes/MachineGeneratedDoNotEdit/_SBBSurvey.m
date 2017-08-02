@@ -1,7 +1,7 @@
 //
-//  SBBSurvey.m
+//  _SBBSurvey.m
 //
-//	Copyright (c) 2014-2016 Sage Bionetworks
+//	Copyright (c) 2014-2017 Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,7 @@
 //	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // DO NOT EDIT. This file is machine-generated and constantly overwritten.
-// Make changes to SBBSurvey.h instead.
+// Make changes to SBBSurvey.m instead.
 //
 
 #import "_SBBSurvey.h"
@@ -38,12 +38,17 @@
 #import "SBBSurveyElement.h"
 
 @interface _SBBSurvey()
+
+// redefine relationships internally as readwrite
+
 @property (nonatomic, strong, readwrite) NSArray *elements;
 
 @end
 
 // see xcdoc://?url=developer.apple.com/library/etc/redirect/xcode/ios/602958/documentation/Cocoa/Conceptual/CoreData/Articles/cdAccessorMethods.html
 @interface NSManagedObject (Survey)
+
+@property (nullable, nonatomic, retain) NSString* copyrightNotice;
 
 @property (nullable, nonatomic, retain) NSDate* createdOn;
 
@@ -55,6 +60,10 @@
 
 @property (nullable, nonatomic, retain) NSDate* modifiedOn;
 
+@property (nullable, nonatomic, retain) NSString* moduleId;
+
+@property (nullable, nonatomic, retain) NSNumber* moduleVersion;
+
 @property (nullable, nonatomic, retain) NSString* name;
 
 @property (nullable, nonatomic, retain) NSNumber* published;
@@ -64,8 +73,6 @@
 @property (nullable, nonatomic, retain) NSNumber* version;
 
 @property (nullable, nonatomic, retain) NSOrderedSet<NSManagedObject *> *elements;
-
-@property (nullable, nonatomic, retain) NSOrderedSet<NSManagedObject *> *surveyResponses;
 
 - (void)addElementsObject:(NSManagedObject *)value;
 - (void)removeElementsObject:(NSManagedObject *)value;
@@ -79,25 +86,13 @@
 - (void)replaceObjectInElementsAtIndex:(NSUInteger)idx withObject:(NSManagedObject *)value;
 - (void)replaceElementsAtIndexes:(NSIndexSet *)indexes withElements:(NSArray<NSManagedObject *> *)values;
 
-- (void)addSurveyResponsesObject:(NSManagedObject *)value;
-- (void)removeSurveyResponsesObject:(NSManagedObject *)value;
-- (void)addSurveyResponses:(NSOrderedSet<NSManagedObject *> *)values;
-- (void)removeSurveyResponses:(NSOrderedSet<NSManagedObject *> *)values;
-
-- (void)insertObject:(NSManagedObject *)value inSurveyResponsesAtIndex:(NSUInteger)idx;
-- (void)removeObjectFromSurveyResponsesAtIndex:(NSUInteger)idx;
-- (void)insertSurveyResponses:(NSArray<NSManagedObject *> *)value atIndexes:(NSIndexSet *)indexes;
-- (void)removeSurveyResponsesAtIndexes:(NSIndexSet *)indexes;
-- (void)replaceObjectInSurveyResponsesAtIndex:(NSUInteger)idx withObject:(NSManagedObject *)value;
-- (void)replaceSurveyResponsesAtIndexes:(NSIndexSet *)indexes withSurveyResponses:(NSArray<NSManagedObject *> *)values;
-
 @end
 
 @implementation _SBBSurvey
 
 - (instancetype)init
 {
-	if((self = [super init]))
+	if ((self = [super init]))
 	{
 
 	}
@@ -106,6 +101,16 @@
 }
 
 #pragma mark Scalar values
+
+- (int64_t)moduleVersionValue
+{
+	return [self.moduleVersion longLongValue];
+}
+
+- (void)setModuleVersionValue:(int64_t)value_
+{
+	self.moduleVersion = [NSNumber numberWithLongLong:value_];
+}
 
 - (BOOL)publishedValue
 {
@@ -143,6 +148,8 @@
 {
     [super updateWithDictionaryRepresentation:dictionary objectManager:objectManager];
 
+    self.copyrightNotice = [dictionary objectForKey:@"copyrightNotice"];
+
     self.createdOn = [NSDate dateWithISO8601String:[dictionary objectForKey:@"createdOn"]];
 
     self.guid = [dictionary objectForKey:@"guid"];
@@ -150,6 +157,10 @@
     self.identifier = [dictionary objectForKey:@"identifier"];
 
     self.modifiedOn = [NSDate dateWithISO8601String:[dictionary objectForKey:@"modifiedOn"]];
+
+    self.moduleId = [dictionary objectForKey:@"moduleId"];
+
+    self.moduleVersion = [dictionary objectForKey:@"moduleVersion"];
 
     self.name = [dictionary objectForKey:@"name"];
 
@@ -174,11 +185,11 @@
     self.guidAndCreatedOn = key;
 
     // overwrite the old elements relationship entirely rather than adding to it
-    self.elements = [NSMutableArray array];
+    [self removeElementsObjects];
 
-    for(id objectRepresentationForDict in [dictionary objectForKey:@"elements"])
+    for (id dictRepresentationForObject in [dictionary objectForKey:@"elements"])
     {
-        SBBSurveyElement *elementsObj = [objectManager objectFromBridgeJSON:objectRepresentationForDict];
+        SBBSurveyElement *elementsObj = [objectManager objectFromBridgeJSON:dictRepresentationForObject];
 
         [self addElementsObject:elementsObj];
     }
@@ -189,6 +200,8 @@
 {
     NSMutableDictionary *dict = [[super dictionaryRepresentationFromObjectManager:objectManager] mutableCopy];
 
+    [dict setObjectIfNotNil:self.copyrightNotice forKey:@"copyrightNotice"];
+
     [dict setObjectIfNotNil:[self.createdOn ISO8601String] forKey:@"createdOn"];
 
     [dict setObjectIfNotNil:self.guid forKey:@"guid"];
@@ -196,6 +209,10 @@
     [dict setObjectIfNotNil:self.identifier forKey:@"identifier"];
 
     [dict setObjectIfNotNil:[self.modifiedOn ISO8601String] forKey:@"modifiedOn"];
+
+    [dict setObjectIfNotNil:self.moduleId forKey:@"moduleId"];
+
+    [dict setObjectIfNotNil:self.moduleVersion forKey:@"moduleVersion"];
 
     [dict setObjectIfNotNil:self.name forKey:@"name"];
 
@@ -205,13 +222,14 @@
 
     [dict setObjectIfNotNil:self.version forKey:@"version"];
 
-    if([self.elements count] > 0)
+    if ([self.elements count] > 0)
 	{
 
 		NSMutableArray *elementsRepresentationsForDictionary = [NSMutableArray arrayWithCapacity:[self.elements count]];
-		for(SBBSurveyElement *obj in self.elements)
-		{
-			[elementsRepresentationsForDictionary addObject:[objectManager bridgeJSONFromObject:obj]];
+
+		for (SBBSurveyElement *obj in self.elements)
+        {
+            [elementsRepresentationsForDictionary addObject:[objectManager bridgeJSONFromObject:obj]];
 		}
 		[dict setObjectIfNotNil:elementsRepresentationsForDictionary forKey:@"elements"];
 
@@ -222,10 +240,10 @@
 
 - (void)awakeFromDictionaryRepresentationInit
 {
-	if(self.sourceDictionaryRepresentation == nil)
+	if (self.sourceDictionaryRepresentation == nil)
 		return; // awakeFromDictionaryRepresentationInit has been already executed on this object.
 
-	for(SBBSurveyElement *elementsObj in self.elements)
+	for (SBBSurveyElement *elementsObj in self.elements)
 	{
 		[elementsObj awakeFromDictionaryRepresentationInit];
 	}
@@ -235,15 +253,17 @@
 
 #pragma mark Core Data cache
 
-- (NSEntityDescription *)entityForContext:(NSManagedObjectContext *)context
++ (NSString *)entityName
 {
-    return [NSEntityDescription entityForName:@"Survey" inManagedObjectContext:context];
+    return @"Survey";
 }
 
 - (instancetype)initWithManagedObject:(NSManagedObject *)managedObject objectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
 {
 
     if (self = [super initWithManagedObject:managedObject objectManager:objectManager cacheManager:cacheManager]) {
+
+        self.copyrightNotice = managedObject.copyrightNotice;
 
         self.createdOn = managedObject.createdOn;
 
@@ -255,6 +275,10 @@
 
         self.modifiedOn = managedObject.modifiedOn;
 
+        self.moduleId = managedObject.moduleId;
+
+        self.moduleVersion = managedObject.moduleVersion;
+
         self.name = managedObject.name;
 
         self.published = managedObject.published;
@@ -263,11 +287,11 @@
 
         self.version = managedObject.version;
 
-		for(NSManagedObject *elementsManagedObj in managedObject.elements)
+		for (NSManagedObject *elementsManagedObj in managedObject.elements)
 		{
             Class objectClass = [SBBObjectManager bridgeClassFromType:elementsManagedObj.entity.name];
             SBBSurveyElement *elementsObj = [[objectClass alloc] initWithManagedObject:elementsManagedObj objectManager:objectManager cacheManager:cacheManager];
-            if(elementsObj != nil)
+            if (elementsObj != nil)
             {
                 [self addElementsObject:elementsObj];
             }
@@ -302,9 +326,10 @@
 
 - (void)updateManagedObject:(NSManagedObject *)managedObject withObjectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
 {
-
     [super updateManagedObject:managedObject withObjectManager:objectManager cacheManager:cacheManager];
     NSManagedObjectContext *cacheContext = managedObject.managedObjectContext;
+
+    managedObject.copyrightNotice = ((id)self.copyrightNotice == [NSNull null]) ? nil : self.copyrightNotice;
 
     managedObject.createdOn = ((id)self.createdOn == [NSNull null]) ? nil : self.createdOn;
 
@@ -316,6 +341,10 @@
 
     managedObject.modifiedOn = ((id)self.modifiedOn == [NSNull null]) ? nil : self.modifiedOn;
 
+    managedObject.moduleId = ((id)self.moduleId == [NSNull null]) ? nil : self.moduleId;
+
+    managedObject.moduleVersion = ((id)self.moduleVersion == [NSNull null]) ? nil : self.moduleVersion;
+
     managedObject.name = ((id)self.name == [NSNull null]) ? nil : self.name;
 
     managedObject.published = ((id)self.published == [NSNull null]) ? nil : self.published;
@@ -325,16 +354,16 @@
     managedObject.version = ((id)self.version == [NSNull null]) ? nil : self.version;
 
     // first make a copy of the existing relationship collection, to iterate through while mutating original
-    id elementsCopy = managedObject.elements;
+    NSOrderedSet *elementsCopy = [managedObject.elements copy];
 
     // now remove all items from the existing relationship
-    NSMutableOrderedSet *elementsSet = [managedObject.elements mutableCopy];
-    [elementsSet removeAllObjects];
-    managedObject.elements = elementsSet;
+    // to work pre-iOS 10, we have to work around this issue: http://stackoverflow.com/questions/7385439/exception-thrown-in-nsorderedset-generated-accessors
+    NSMutableOrderedSet *workingElementsSet = [managedObject mutableOrderedSetValueForKey:NSStringFromSelector(@selector(elements))];
+    [workingElementsSet removeAllObjects];
 
     // now put the "new" items, if any, into the relationship
-    if([self.elements count] > 0) {
-		for(SBBSurveyElement *obj in self.elements) {
+    if ([self.elements count] > 0) {
+		for (SBBSurveyElement *obj in self.elements) {
             NSManagedObject *relMo = nil;
             if ([obj isDirectlyCacheableWithContext:cacheContext]) {
                 // get it from the cache manager
@@ -344,17 +373,16 @@
                 // sub object is not directly cacheable, or not currently cached, so create it before adding
                 relMo = [obj createInContext:cacheContext withObjectManager:objectManager cacheManager:cacheManager];
             }
-            NSMutableOrderedSet *elementsSet = [managedObject mutableOrderedSetValueForKey:@"elements"];
-            [elementsSet addObject:relMo];
-            managedObject.elements = elementsSet;
+
+            [workingElementsSet addObject:relMo];
 
         }
 	}
 
-    // now delete any objects that aren't still in the relationship
+    // now release any objects that aren't still in the relationship (they will be deleted when they no longer belong to any to-many relationships)
     for (NSManagedObject *relMo in elementsCopy) {
         if (![relMo valueForKey:@"survey"]) {
-           [cacheContext deleteObject:relMo];
+           [self releaseManagedObject:relMo inContext:cacheContext];
         }
     }
 
@@ -368,7 +396,7 @@
 
 - (void)addElementsObject:(SBBSurveyElement*)value_ settingInverse: (BOOL) setInverse
 {
-    if(self.elements == nil)
+    if (self.elements == nil)
 	{
 
 		self.elements = [NSMutableArray array];
@@ -378,6 +406,7 @@
 	[(NSMutableArray *)self.elements addObject:value_];
 
 }
+
 - (void)addElementsObject:(SBBSurveyElement*)value_
 {
     [self addElementsObject:(SBBSurveyElement*)value_ settingInverse: YES];
@@ -386,7 +415,7 @@
 - (void)removeElementsObjects
 {
 
-	self.elements = [NSMutableArray array];
+    self.elements = [NSMutableArray array];
 
 }
 
@@ -394,6 +423,7 @@
 {
 
     [(NSMutableArray *)self.elements removeObject:value_];
+
 }
 
 - (void)removeElementsObject:(SBBSurveyElement*)value_

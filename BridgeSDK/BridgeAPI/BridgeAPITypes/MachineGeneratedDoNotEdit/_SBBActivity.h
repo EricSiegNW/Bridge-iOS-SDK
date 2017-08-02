@@ -1,7 +1,7 @@
 //
 //  _SBBActivity.h
 //
-//	Copyright (c) 2014-2016 Sage Bionetworks
+//	Copyright (c) 2014-2017 Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -33,8 +33,8 @@
 #import <Foundation/Foundation.h>
 #import "SBBBridgeObject.h"
 
+@class SBBCompoundActivity;
 @class SBBSurveyReference;
-@class SBBSurveyResponseReference;
 @class SBBTaskReference;
 
 @protocol _SBBActivity
@@ -51,15 +51,15 @@
 
 @property (nonatomic, strong) NSString* labelDetail;
 
-@property (nonatomic, strong, readwrite) SBBSurveyReference *survey;
+@property (nonatomic, strong, readwrite) SBBCompoundActivity *compoundActivity;
 
-@property (nonatomic, strong, readwrite) SBBSurveyResponseReference *surveyResponse;
+@property (nonatomic, strong, readwrite) SBBSurveyReference *survey;
 
 @property (nonatomic, strong, readwrite) SBBTaskReference *task;
 
-- (void) setSurvey: (SBBSurveyReference*) survey_ settingInverse: (BOOL) setInverse;
+- (void) setCompoundActivity: (SBBCompoundActivity*) compoundActivity_ settingInverse: (BOOL) setInverse;
 
-- (void) setSurveyResponse: (SBBSurveyResponseReference*) surveyResponse_ settingInverse: (BOOL) setInverse;
+- (void) setSurvey: (SBBSurveyReference*) survey_ settingInverse: (BOOL) setInverse;
 
 - (void) setTask: (SBBTaskReference*) task_ settingInverse: (BOOL) setInverse;
 

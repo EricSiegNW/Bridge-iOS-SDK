@@ -1,7 +1,7 @@
 //
 //  _SBBSurvey.h
 //
-//	Copyright (c) 2014-2016 Sage Bionetworks
+//	Copyright (c) 2014-2017 Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -41,6 +41,8 @@
 
 @interface _SBBSurvey : SBBBridgeObject
 
+@property (nonatomic, strong) NSString* copyrightNotice;
+
 @property (nonatomic, strong) NSDate* createdOn;
 
 @property (nonatomic, strong) NSString* guid;
@@ -48,6 +50,12 @@
 @property (nonatomic, strong) NSString* identifier;
 
 @property (nonatomic, strong) NSDate* modifiedOn;
+
+@property (nonatomic, strong) NSString* moduleId;
+
+@property (nonatomic, strong) NSNumber* moduleVersion;
+
+@property (nonatomic, assign) int64_t moduleVersionValue;
 
 @property (nonatomic, strong) NSString* name;
 

@@ -35,9 +35,9 @@
 #import "SBBAuthManager.h"
 #import "SBBObjectManager.h"
 #import "SBBBridgeObjects.h"
-#import "BridgeSDKInternal.h"
+#import "BridgeSDK+Internal.h"
 
-#define SCHEDULE_API GLOBAL_API_PREFIX @"/schedules"
+#define SCHEDULE_API V4_API_PREFIX @"/schedules"
 
 NSString * const kSBBScheduleAPI =       SCHEDULE_API;
 

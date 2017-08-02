@@ -1,7 +1,7 @@
 //
 //  _SBBStringConstraints.h
 //
-//	Copyright (c) 2014-2016 Sage Bionetworks
+//	Copyright (c) 2014-2017 Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -48,5 +48,9 @@
 @property (nonatomic, assign) int64_t minLengthValue;
 
 @property (nonatomic, strong) NSString* pattern;
+
+@property (nonatomic, strong) NSString* patternErrorMessage;
+
+@property (nonatomic, strong) NSString* patternPlaceholder;
 
 @end

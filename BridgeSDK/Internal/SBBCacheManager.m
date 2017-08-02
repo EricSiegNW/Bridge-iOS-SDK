@@ -2,8 +2,30 @@
 //  SBBCacheManager.m
 //  BridgeSDK
 //
-//  Created by Erin Mounts on 11/25/14.
-//  Copyright (c) 2014 Sage Bionetworks. All rights reserved.
+//	Copyright (c) 2014-2016, Sage Bionetworks
+//	All rights reserved.
+//
+//	Redistribution and use in source and binary forms, with or without
+//	modification, are permitted provided that the following conditions are met:
+//	    * Redistributions of source code must retain the above copyright
+//	      notice, this list of conditions and the following disclaimer.
+//	    * Redistributions in binary form must reproduce the above copyright
+//	      notice, this list of conditions and the following disclaimer in the
+//	      documentation and/or other materials provided with the distribution.
+//	    * Neither the name of Sage Bionetworks nor the names of BridgeSDk's
+//		  contributors may be used to endorse or promote products derived from
+//		  this software without specific prior written permission.
+//
+//	THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//	ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//	WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+//	DISCLAIMED. IN NO EVENT SHALL SAGE BIONETWORKS BE LIABLE FOR ANY
+//	DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+//	(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+//	LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+//	ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+//	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+//	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
 #import "SBBCacheManager.h"
@@ -18,7 +40,10 @@
 
 BOOL gSBBUseCache = NO;
 
+static NSString *gPersistentStoreSubdirectory = @"_BridgeSDKCache_";
+
 static NSMutableDictionary *gCoreDataQueuesByPersistentStoreName;
+static NSMutableDictionary *gCoreDataCacheIOContextsByPersistentStoreName;
 
 @interface SBBCacheManager ()<NSCacheDelegate>
 
@@ -46,6 +71,7 @@ static NSMutableDictionary *gCoreDataQueuesByPersistentStoreName;
 + (void)initialize
 {
     gCoreDataQueuesByPersistentStoreName = [[NSMutableDictionary alloc] init];
+    gCoreDataCacheIOContextsByPersistentStoreName = [[NSMutableDictionary alloc] init];
 }
 
 + (instancetype)defaultComponent
@@ -74,6 +100,11 @@ static NSMutableDictionary *gCoreDataQueuesByPersistentStoreName;
     cm.persistentStoreType = storeType;
     cm.authManager = authManager;
     return cm;
+}
+
++ (instancetype)inMemoryCacheManagerWithAuthManager:(id<SBBAuthManagerProtocol>)authManager
+{
+    return [self cacheManagerWithDataModelName:@"SBBDataModel" bundleId:SBBBUNDLEIDSTRING storeType:NSInMemoryStoreType authManager:authManager];
 }
 
 - (instancetype)init
@@ -120,6 +151,15 @@ static NSMutableDictionary *gCoreDataQueuesByPersistentStoreName;
 
 - (SBBBridgeObject *)cachedObjectOfType:(NSString *)type withId:(NSString *)objectId createIfMissing:(BOOL)create
 {
+    return [self cachedObjectOfType:type withId:objectId createIfMissing:create created:nil];
+}
+
+- (SBBBridgeObject *)cachedObjectOfType:(NSString *)type withId:(NSString *)objectId createIfMissing:(BOOL)create created:(BOOL *)created
+{
+    if (created) {
+        *created = NO;
+    }
+    
     if (!type.length || !objectId.length) {
         return nil;
     }
@@ -137,6 +177,7 @@ static NSMutableDictionary *gCoreDataQueuesByPersistentStoreName;
     }
     
     __block SBBBridgeObject *fetched = nil;
+    __block BOOL objectCreated = NO;
 
     [context performBlockAndWait:^{
         fetched = [self inMemoryBridgeObjectOfType:type andId:objectId];
@@ -151,13 +192,16 @@ static NSMutableDictionary *gCoreDataQueuesByPersistentStoreName;
             if (fetchedMO) {
                 if ([fetchedClass instancesRespondToSelector:@selector(initWithManagedObject:objectManager:cacheManager:)]) {
                     fetched = [[fetchedClass alloc] initWithManagedObject:fetchedMO objectManager:om cacheManager:self];
+                    if (!fetched) {
+                        NSLog(@"Failed to create %@ instance from %@ managed object--probably trying to access encrypted data without login credentials", NSStringFromClass(fetchedClass), entity.name);
+                    }
+                    NSAssert(!create || fetched, @"Attempting to create duplicate %@ with %@ == %@ in cache", entity.name, keyPath, objectId);
                 }
-            }
-            
-            if (!fetched && create) {
+            } else if (create) {
                 fetched = [[fetchedClass alloc] initWithDictionaryRepresentation:@{@"type": type, keyPath: objectId} objectManager:om];
                 [fetched createInContext:context withObjectManager:om cacheManager:self];
                 [self saveCacheIOContext];
+                objectCreated = YES;
             }
             
             NSString *key = [self inMemoryKeyForType:type andId:objectId];
@@ -169,6 +213,10 @@ static NSMutableDictionary *gCoreDataQueuesByPersistentStoreName;
             }
         }
     }];
+    
+    if (created) {
+        *created = objectCreated;
+    }
    
     return fetched;
 }
@@ -180,6 +228,11 @@ static NSMutableDictionary *gCoreDataQueuesByPersistentStoreName;
 }
 
 - (SBBBridgeObject *)cachedObjectFromBridgeJSON:(id)json
+{
+    return [self cachedObjectFromBridgeJSON:json createIfMissing:YES];
+}
+
+- (SBBBridgeObject *)cachedObjectFromBridgeJSON:(id)json createIfMissing:(BOOL)create
 {
     NSString *type = [json objectForKey:@"type"];
     if (!type.length) {
@@ -236,11 +289,21 @@ static NSMutableDictionary *gCoreDataQueuesByPersistentStoreName;
     }
     
     // Get it from the cache by type & id
-    SBBBridgeObject *object = [self cachedObjectOfType:type withId:key createIfMissing:YES];
+    BOOL created;
+    SBBBridgeObject *object = [self cachedObjectOfType:type withId:key createIfMissing:create created:&created];
     
     if (object) {
         SBBObjectManager *om = [SBBObjectManager objectManagerWithCacheManager:self];
-        [object updateWithDictionaryRepresentation:json objectManager:om];
+        // if this is a newly-created object, i.e. didn't already exist in the cache, just fill
+        // it in from the given Bridge JSON. Otherwise, let the object decide how the two should
+        // be reconciled. The default implementation is that if the object is marked as extendable
+        // or as having client-writable fields, then we don't update the existing cached object
+        // from the server; otherwise we just overwrite whatever we had cached with the server version.
+        if (created) {
+            [object updateWithDictionaryRepresentation:json objectManager:om];
+        } else {
+            [object reconcileWithDictionaryRepresentation:json objectManager:om];
+        }
         // Update CoreData cached object too
         [self.cacheIOContext performBlockAndWait:^{
             NSManagedObject *fetchedMO = [self managedObjectOfEntity:entity withId:key atKeyPath:keyPath];
@@ -273,28 +336,36 @@ static NSMutableDictionary *gCoreDataQueuesByPersistentStoreName;
 - (void)removeFromCacheObjectOfType:(NSString *)type withId:(NSString *)objectId
 {
     NSManagedObjectContext *context = self.cacheIOContext;
+    NSEntityDescription *entity = [NSEntityDescription entityForName:type inManagedObjectContext:context];
+    if (!entity) {
+        return;
+    }
+    
+    NSString *keyPath = entity.userInfo[@"entityIDKeyPath"];
+    if (!keyPath.length) {
+        // not cacheable
+        return;
+    }
+    
     [context performBlock:^{
-        SBBBridgeObject *obj = [self cachedObjectOfType:type withId:objectId createIfMissing:NO];
-        if (obj) {
-            NSManagedObject *fetchedMO = [self cachedObjectForBridgeObject:obj inContext:context];
-            if (fetchedMO) {
-                [context deleteObject:fetchedMO];
-                [context processPendingChanges];
-                
-                // if it has *any* relationships with cascade-delete rules, we'll run through the entire mem cache and clean out
-                // anything with no corresponding managed object, just to be sure it's correct and up-to-date
-                NSDictionary <NSString *, NSRelationshipDescription *> *relationshipsByName = fetchedMO.entity.relationshipsByName;
-                for (NSString *relationshipName in relationshipsByName.allKeys) {
-                    NSRelationshipDescription *relationship = relationshipsByName[relationshipName];
-                    if (relationship.deleteRule == NSCascadeDeleteRule) {
-                        [self cleanupDeletedManagedObjectsFromMemoryCache];
-                        break;
-                    }
+        NSManagedObject *fetchedMO = [self managedObjectOfEntity:entity withId:objectId atKeyPath:keyPath];
+        if (fetchedMO) {
+            [context deleteObject:fetchedMO];
+            [context processPendingChanges];
+            
+            // if it has *any* relationships with cascade-delete rules, we'll run through the entire mem cache and clean out
+            // anything with no corresponding managed object, just to be sure it's correct and up-to-date
+            NSDictionary <NSString *, NSRelationshipDescription *> *relationshipsByName = fetchedMO.entity.relationshipsByName;
+            for (NSString *relationshipName in relationshipsByName.allKeys) {
+                NSRelationshipDescription *relationship = relationshipsByName[relationshipName];
+                if (relationship.deleteRule == NSCascadeDeleteRule) {
+                    [self cleanupDeletedManagedObjectsFromMemoryCache];
+                    break;
                 }
             }
-            
-            [self removeFromMemoryBridgeObjectOfType:type andId:objectId];
         }
+        
+        [self removeFromMemoryBridgeObjectOfType:type andId:objectId];
     }];
 }
 
@@ -465,7 +536,7 @@ void removeCoreDataQueueForPersistentStoreName(NSString *name)
     }
     
     NSURL *storeURL = [self storeURL];
-    NSURL *storeDirURL = [storeURL URLByDeletingLastPathComponent];
+    NSURL *storeDirURL = [self storeDirURL];
     NSError *error = nil;
     
     if (![[NSFileManager defaultManager] createDirectoryAtURL:storeDirURL withIntermediateDirectories:YES attributes:nil error:&error]) {
@@ -513,7 +584,7 @@ void removeCoreDataQueueForPersistentStoreName(NSString *name)
         NSLog(@"%@", message);
         
         // removing store
-        [[NSFileManager defaultManager] removeItemAtURL:storeURL error:nil];
+        [[NSFileManager defaultManager] removeItemAtURL:storeDirURL error:nil];
         
         // resetting _persistentStoreCoordinator
         _persistentStoreCoordinator = nil;
@@ -523,17 +594,44 @@ void removeCoreDataQueueForPersistentStoreName(NSString *name)
     return _persistentStoreCoordinator;
 }
 
-- (NSURL *)storeURL
+- (NSURL *)storeDirURL
 {
-    NSURL *storeURL = [self appDocumentsDirectory];
+    NSURL *storeOrigin = nil;
+    NSString *appGroupIdentifier = SBBBridgeInfo.shared.appGroupIdentifier;
+    
+    // if there's a shared container, use it; otherwise use the Documents directory
+    if (appGroupIdentifier.length > 0) {
+        storeOrigin = [[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:appGroupIdentifier];
+    } else {
+        storeOrigin = [self appDocumentsDirectory];
+    }
+    
+    // put the persistent store in a subdirectory so it's easy to manage
+    NSURL *storeDirURL = [storeOrigin URLByAppendingPathComponent:gPersistentStoreSubdirectory];
+    
+    // for backward compatibility, check for a persistent store at the old email-hash-based path,
+    // and if it exists, move it to the new path.
     SBBAuthManager *authMan = (SBBAuthManager *)SBBComponent(SBBAuthManager);
     if ([authMan respondsToSelector:@selector(savedEmail)]) {
         NSString *emailHash = [[authMan.savedEmail dataUsingEncoding:NSUTF8StringEncoding] hexMD5];
         if (emailHash) {
-            storeURL = [storeURL URLByAppendingPathComponent:emailHash];
+            NSURL *oldStoreURL = [storeOrigin URLByAppendingPathComponent:emailHash];
+            NSFileManager *fm = [NSFileManager defaultManager];
+            if ([fm fileExistsAtPath:oldStoreURL.path]) {
+                NSError *error;
+                [fm moveItemAtURL:oldStoreURL toURL:storeDirURL error:&error];
+                if (error) {
+                    NSLog(@"Error attempting to move legacy cache at %@ to new location %@", oldStoreURL, storeDirURL);
+                }
+            }
         }
     }
-    return [storeURL URLByAppendingPathComponent:self.persistentStoreName];
+    
+    return storeDirURL;
+}
+
+- (NSURL *)storeURL {
+    return [[self storeDirURL] URLByAppendingPathComponent:self.persistentStoreName];
 }
 
 - (NSManagedObjectContext *)cacheIOContext
@@ -542,9 +640,16 @@ void removeCoreDataQueueForPersistentStoreName(NSString *name)
         [self dispatchSyncToCacheManagerCoreDataQueue:^{
             // check again in case it got set before we got our turn in the core data queue
             if (!_cacheIOContext) {
+                // now check if one already exists for this persistent store name
+                _cacheIOContext = gCoreDataCacheIOContextsByPersistentStoreName[self.persistentStoreName];
+            }
+            
+            if (!_cacheIOContext) {
+                // if not, then create one for this persistent store name and store it where other CacheManager instances can find it
                 _cacheIOContext = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
                 _cacheIOContext.persistentStoreCoordinator = [self persistentStoreCoordinator];
                 _cacheIOContext.undoManager = [[NSUndoManager alloc] init];
+                gCoreDataCacheIOContextsByPersistentStoreName[self.persistentStoreName] = _cacheIOContext;
             }
         }];
     }
@@ -588,6 +693,10 @@ void removeCoreDataQueueForPersistentStoreName(NSString *name)
     [context performBlockAndWait:^{
         self.objectsCachedByTypeAndID = [NSMutableDictionary dictionary];
         reset = [self resetDatabase];
+        if (reset) {
+            // remove ourselves from the global cacheIOContext map
+            gCoreDataCacheIOContextsByPersistentStoreName[self.persistentStoreName] = nil;
+        }
     }];
     
     return reset;
@@ -599,9 +708,6 @@ void removeCoreDataQueueForPersistentStoreName(NSString *name)
     __block BOOL reset = NO;
     
     [self dispatchSyncToCacheManagerCoreDataQueue:^{
-        NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
-        [center removeObserver:self.appWillTerminateObserver];
-        
         [_cacheIOContext performBlockAndWait:^{
             [_cacheIOContext reset];
             
@@ -615,10 +721,11 @@ void removeCoreDataQueueForPersistentStoreName(NSString *name)
             _cacheIOContext= nil;
             _managedObjectModel = nil;
             
-            NSURL *storeURL = [self storeURL];
-            if ([[NSFileManager defaultManager] fileExistsAtPath:storeURL.path]) {
-                if (![[NSFileManager defaultManager] removeItemAtURL:storeURL error:&error]) {
-                    NSLog(@"Unable to delete SQLite db file at %@ : error %@, %@", storeURL, error, [error userInfo]);
+            NSURL *storeDirURL = [self storeDirURL];
+            NSFileManager *fm = [NSFileManager defaultManager];
+            if ([fm fileExistsAtPath:storeDirURL.path]) {
+                if (![fm removeItemAtURL:storeDirURL error:&error]) {
+                    NSLog(@"Unable to delete SQLite db files directory at %@ : error %@, %@", storeDirURL, error, [error userInfo]);
                     return;
                 }
             }

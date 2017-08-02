@@ -1,7 +1,7 @@
 //
 //  _SBBSurveyElement.h
 //
-//	Copyright (c) 2014-2016 Sage Bionetworks
+//	Copyright (c) 2014-2017 Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,8 @@
 #import <Foundation/Foundation.h>
 #import "SBBBridgeObject.h"
 
+@class SBBSurveyRule;
+
 @protocol _SBBSurveyElement
 
 @end
@@ -46,5 +48,22 @@
 @property (nonatomic, strong) NSString* prompt;
 
 @property (nonatomic, strong) NSString* promptDetail;
+
+@property (nonatomic, strong) NSString* title;
+
+@property (nonatomic, strong, readonly) NSArray *afterRules;
+
+- (void)addAfterRulesObject:(SBBSurveyRule*)value_ settingInverse: (BOOL) setInverse;
+- (void)addAfterRulesObject:(SBBSurveyRule*)value_;
+- (void)removeAfterRulesObjects;
+- (void)removeAfterRulesObject:(SBBSurveyRule*)value_ settingInverse: (BOOL) setInverse;
+- (void)removeAfterRulesObject:(SBBSurveyRule*)value_;
+
+- (void)insertObject:(SBBSurveyRule*)value inAfterRulesAtIndex:(NSUInteger)idx;
+- (void)removeObjectFromAfterRulesAtIndex:(NSUInteger)idx;
+- (void)insertAfterRules:(NSArray *)value atIndexes:(NSIndexSet *)indexes;
+- (void)removeAfterRulesAtIndexes:(NSIndexSet *)indexes;
+- (void)replaceObjectInAfterRulesAtIndex:(NSUInteger)idx withObject:(SBBSurveyRule*)value;
+- (void)replaceAfterRulesAtIndexes:(NSIndexSet *)indexes withAfterRules:(NSArray *)values;
 
 @end

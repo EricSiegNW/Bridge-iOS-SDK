@@ -1,7 +1,7 @@
 //
-//  SBBResourceList.m
+//  _SBBResourceList.m
 //
-//	Copyright (c) 2014-2016 Sage Bionetworks
+//	Copyright (c) 2014-2017 Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -27,22 +27,28 @@
 //	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // DO NOT EDIT. This file is machine-generated and constantly overwritten.
-// Make changes to SBBResourceList.h instead.
+// Make changes to SBBResourceList.m instead.
 //
 
 #import "_SBBResourceList.h"
+#import "_SBBResourceListInternal.h"
 #import "ModelObjectInternal.h"
 #import "NSDate+SBBAdditions.h"
 
 #import "SBBBridgeObject.h"
 
 @interface _SBBResourceList()
+
+// redefine relationships internally as readwrite
+
 @property (nonatomic, strong, readwrite) NSArray *items;
 
 @end
 
 // see xcdoc://?url=developer.apple.com/library/etc/redirect/xcode/ios/602958/documentation/Cocoa/Conceptual/CoreData/Articles/cdAccessorMethods.html
 @interface NSManagedObject (ResourceList)
+
+@property (nullable, nonatomic, retain) NSString* listID__;
 
 @property (nullable, nonatomic, retain) NSNumber* total;
 
@@ -66,7 +72,7 @@
 
 - (instancetype)init
 {
-	if((self = [super init]))
+	if ((self = [super init]))
 	{
 
 	}
@@ -92,14 +98,20 @@
 {
     [super updateWithDictionaryRepresentation:dictionary objectManager:objectManager];
 
+    // Set the entity ID key path with the key value if available, even when it's not normally
+    // included in the PONSO dictionary
+    NSString *keyValue = [dictionary objectForKey:@"listID__"];
+    if (keyValue)
+        self.listID__ = keyValue;
+
     self.total = [dictionary objectForKey:@"total"];
 
     // overwrite the old items relationship entirely rather than adding to it
-    self.items = [NSMutableArray array];
+    [self removeItemsObjects];
 
-    for(id objectRepresentationForDict in [dictionary objectForKey:@"items"])
+    for (id dictRepresentationForObject in [dictionary objectForKey:@"items"])
     {
-        SBBBridgeObject *itemsObj = [objectManager objectFromBridgeJSON:objectRepresentationForDict];
+        SBBBridgeObject *itemsObj = [objectManager objectFromBridgeJSON:dictRepresentationForObject];
 
         [self addItemsObject:itemsObj];
     }
@@ -112,13 +124,14 @@
 
     [dict setObjectIfNotNil:self.total forKey:@"total"];
 
-    if([self.items count] > 0)
+    if ([self.items count] > 0)
 	{
 
 		NSMutableArray *itemsRepresentationsForDictionary = [NSMutableArray arrayWithCapacity:[self.items count]];
-		for(SBBBridgeObject *obj in self.items)
-		{
-			[itemsRepresentationsForDictionary addObject:[objectManager bridgeJSONFromObject:obj]];
+
+		for (SBBBridgeObject *obj in self.items)
+        {
+            [itemsRepresentationsForDictionary addObject:[objectManager bridgeJSONFromObject:obj]];
 		}
 		[dict setObjectIfNotNil:itemsRepresentationsForDictionary forKey:@"items"];
 
@@ -129,10 +142,10 @@
 
 - (void)awakeFromDictionaryRepresentationInit
 {
-	if(self.sourceDictionaryRepresentation == nil)
+	if (self.sourceDictionaryRepresentation == nil)
 		return; // awakeFromDictionaryRepresentationInit has been already executed on this object.
 
-	for(SBBBridgeObject *itemsObj in self.items)
+	for (SBBBridgeObject *itemsObj in self.items)
 	{
 		[itemsObj awakeFromDictionaryRepresentationInit];
 	}
@@ -142,9 +155,9 @@
 
 #pragma mark Core Data cache
 
-- (NSEntityDescription *)entityForContext:(NSManagedObjectContext *)context
++ (NSString *)entityName
 {
-    return [NSEntityDescription entityForName:@"ResourceList" inManagedObjectContext:context];
+    return @"ResourceList";
 }
 
 - (instancetype)initWithManagedObject:(NSManagedObject *)managedObject objectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
@@ -152,13 +165,15 @@
 
     if (self = [super initWithManagedObject:managedObject objectManager:objectManager cacheManager:cacheManager]) {
 
+        self.listID__ = managedObject.listID__;
+
         self.total = managedObject.total;
 
-		for(NSManagedObject *itemsManagedObj in managedObject.items)
+		for (NSManagedObject *itemsManagedObj in managedObject.items)
 		{
             Class objectClass = [SBBObjectManager bridgeClassFromType:itemsManagedObj.entity.name];
             SBBBridgeObject *itemsObj = [[objectClass alloc] initWithManagedObject:itemsManagedObj objectManager:objectManager cacheManager:cacheManager];
-            if(itemsObj != nil)
+            if (itemsObj != nil)
             {
                 [self addItemsObject:itemsObj];
             }
@@ -193,23 +208,24 @@
 
 - (void)updateManagedObject:(NSManagedObject *)managedObject withObjectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
 {
-
     [super updateManagedObject:managedObject withObjectManager:objectManager cacheManager:cacheManager];
     NSManagedObjectContext *cacheContext = managedObject.managedObjectContext;
+
+    managedObject.listID__ = ((id)self.listID__ == [NSNull null]) ? nil : self.listID__;
 
     managedObject.total = ((id)self.total == [NSNull null]) ? nil : self.total;
 
     // first make a copy of the existing relationship collection, to iterate through while mutating original
-    id itemsCopy = managedObject.items;
+    NSOrderedSet *itemsCopy = [managedObject.items copy];
 
     // now remove all items from the existing relationship
-    NSMutableOrderedSet *itemsSet = [managedObject.items mutableCopy];
-    [itemsSet removeAllObjects];
-    managedObject.items = itemsSet;
+    // to work pre-iOS 10, we have to work around this issue: http://stackoverflow.com/questions/7385439/exception-thrown-in-nsorderedset-generated-accessors
+    NSMutableOrderedSet *workingItemsSet = [managedObject mutableOrderedSetValueForKey:NSStringFromSelector(@selector(items))];
+    [workingItemsSet removeAllObjects];
 
     // now put the "new" items, if any, into the relationship
-    if([self.items count] > 0) {
-		for(SBBBridgeObject *obj in self.items) {
+    if ([self.items count] > 0) {
+		for (SBBBridgeObject *obj in self.items) {
             NSManagedObject *relMo = nil;
             if ([obj isDirectlyCacheableWithContext:cacheContext]) {
                 // get it from the cache manager
@@ -219,17 +235,16 @@
                 // sub object is not directly cacheable, or not currently cached, so create it before adding
                 relMo = [obj createInContext:cacheContext withObjectManager:objectManager cacheManager:cacheManager];
             }
-            NSMutableOrderedSet *itemsSet = [managedObject mutableOrderedSetValueForKey:@"items"];
-            [itemsSet addObject:relMo];
-            managedObject.items = itemsSet;
+
+            [workingItemsSet addObject:relMo];
 
         }
 	}
 
-    // now delete any objects that aren't still in the relationship
+    // now release any objects that aren't still in the relationship (they will be deleted when they no longer belong to any to-many relationships)
     for (NSManagedObject *relMo in itemsCopy) {
         if (![relMo valueForKey:@"resourceList"]) {
-           [cacheContext deleteObject:relMo];
+           [self releaseManagedObject:relMo inContext:cacheContext];
         }
     }
 
@@ -243,7 +258,7 @@
 
 - (void)addItemsObject:(SBBBridgeObject*)value_ settingInverse: (BOOL) setInverse
 {
-    if(self.items == nil)
+    if (self.items == nil)
 	{
 
 		self.items = [NSMutableArray array];
@@ -253,6 +268,7 @@
 	[(NSMutableArray *)self.items addObject:value_];
 
 }
+
 - (void)addItemsObject:(SBBBridgeObject*)value_
 {
     [self addItemsObject:(SBBBridgeObject*)value_ settingInverse: YES];
@@ -261,7 +277,7 @@
 - (void)removeItemsObjects
 {
 
-	self.items = [NSMutableArray array];
+    self.items = [NSMutableArray array];
 
 }
 
@@ -269,6 +285,7 @@
 {
 
     [(NSMutableArray *)self.items removeObject:value_];
+
 }
 
 - (void)removeItemsObject:(SBBBridgeObject*)value_

@@ -1,7 +1,7 @@
 //
 //  _SBBUserSessionInfo.h
 //
-//	Copyright (c) 2014-2016 Sage Bionetworks
+//	Copyright (c) 2014-2017 Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -34,6 +34,7 @@
 #import "SBBBridgeObject.h"
 
 @class SBBConsentStatus;
+@class SBBStudyParticipant;
 
 @protocol _SBBUserSessionInfo
 
@@ -49,32 +50,28 @@
 
 @property (nonatomic, assign) BOOL consentedValue;
 
-@property (nonatomic, strong) NSArray<NSString *>* dataGroups;
-
 @property (nonatomic, strong) NSNumber* dataSharing;
 
 @property (nonatomic, assign) BOOL dataSharingValue;
 
 @property (nonatomic, strong) NSString* environment;
 
-@property (nonatomic, strong) NSArray<NSString *>* roles;
-
 @property (nonatomic, strong) NSString* sessionToken;
-
-@property (nonatomic, strong) NSString* sharingScope;
 
 @property (nonatomic, strong) NSNumber* signedMostRecentConsent;
 
 @property (nonatomic, assign) BOOL signedMostRecentConsentValue;
 
-@property (nonatomic, strong) NSString* username;
+@property (nonatomic, strong, readonly) NSDictionary *consentStatuses;
 
-@property (nonatomic, strong, readonly) NSArray *consentStatuses;
+@property (nonatomic, strong, readwrite) SBBStudyParticipant *studyParticipant;
 
 - (void)addConsentStatusesObject:(SBBConsentStatus*)value_ settingInverse: (BOOL) setInverse;
 - (void)addConsentStatusesObject:(SBBConsentStatus*)value_;
 - (void)removeConsentStatusesObjects;
 - (void)removeConsentStatusesObject:(SBBConsentStatus*)value_ settingInverse: (BOOL) setInverse;
 - (void)removeConsentStatusesObject:(SBBConsentStatus*)value_;
+
+- (void) setStudyParticipant: (SBBStudyParticipant*) studyParticipant_ settingInverse: (BOOL) setInverse;
 
 @end

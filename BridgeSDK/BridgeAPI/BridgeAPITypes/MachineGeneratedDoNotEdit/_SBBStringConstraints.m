@@ -1,7 +1,7 @@
 //
-//  SBBStringConstraints.m
+//  _SBBStringConstraints.m
 //
-//	Copyright (c) 2014-2016 Sage Bionetworks
+//	Copyright (c) 2014-2017 Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,7 @@
 //	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // DO NOT EDIT. This file is machine-generated and constantly overwritten.
-// Make changes to SBBStringConstraints.h instead.
+// Make changes to SBBStringConstraints.m instead.
 //
 
 #import "_SBBStringConstraints.h"
@@ -47,13 +47,17 @@
 
 @property (nullable, nonatomic, retain) NSString* pattern;
 
+@property (nullable, nonatomic, retain) NSString* patternErrorMessage;
+
+@property (nullable, nonatomic, retain) NSString* patternPlaceholder;
+
 @end
 
 @implementation _SBBStringConstraints
 
 - (instancetype)init
 {
-	if((self = [super init]))
+	if ((self = [super init]))
 	{
 
 	}
@@ -95,6 +99,10 @@
 
     self.pattern = [dictionary objectForKey:@"pattern"];
 
+    self.patternErrorMessage = [dictionary objectForKey:@"patternErrorMessage"];
+
+    self.patternPlaceholder = [dictionary objectForKey:@"patternPlaceholder"];
+
 }
 
 - (NSDictionary *)dictionaryRepresentationFromObjectManager:(id<SBBObjectManagerProtocol>)objectManager
@@ -107,12 +115,16 @@
 
     [dict setObjectIfNotNil:self.pattern forKey:@"pattern"];
 
+    [dict setObjectIfNotNil:self.patternErrorMessage forKey:@"patternErrorMessage"];
+
+    [dict setObjectIfNotNil:self.patternPlaceholder forKey:@"patternPlaceholder"];
+
 	return [dict copy];
 }
 
 - (void)awakeFromDictionaryRepresentationInit
 {
-	if(self.sourceDictionaryRepresentation == nil)
+	if (self.sourceDictionaryRepresentation == nil)
 		return; // awakeFromDictionaryRepresentationInit has been already executed on this object.
 
 	[super awakeFromDictionaryRepresentationInit];
@@ -120,9 +132,9 @@
 
 #pragma mark Core Data cache
 
-- (NSEntityDescription *)entityForContext:(NSManagedObjectContext *)context
++ (NSString *)entityName
 {
-    return [NSEntityDescription entityForName:@"StringConstraints" inManagedObjectContext:context];
+    return @"StringConstraints";
 }
 
 - (instancetype)initWithManagedObject:(NSManagedObject *)managedObject objectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
@@ -135,6 +147,10 @@
         self.minLength = managedObject.minLength;
 
         self.pattern = managedObject.pattern;
+
+        self.patternErrorMessage = managedObject.patternErrorMessage;
+
+        self.patternPlaceholder = managedObject.patternPlaceholder;
 
     }
 
@@ -166,7 +182,6 @@
 
 - (void)updateManagedObject:(NSManagedObject *)managedObject withObjectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
 {
-
     [super updateManagedObject:managedObject withObjectManager:objectManager cacheManager:cacheManager];
 
     managedObject.maxLength = ((id)self.maxLength == [NSNull null]) ? nil : self.maxLength;
@@ -174,6 +189,10 @@
     managedObject.minLength = ((id)self.minLength == [NSNull null]) ? nil : self.minLength;
 
     managedObject.pattern = ((id)self.pattern == [NSNull null]) ? nil : self.pattern;
+
+    managedObject.patternErrorMessage = ((id)self.patternErrorMessage == [NSNull null]) ? nil : self.patternErrorMessage;
+
+    managedObject.patternPlaceholder = ((id)self.patternPlaceholder == [NSNull null]) ? nil : self.patternPlaceholder;
 
     // Calling code will handle saving these changes to cacheContext.
 }

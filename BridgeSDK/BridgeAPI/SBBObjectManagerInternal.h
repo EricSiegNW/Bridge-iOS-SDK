@@ -7,10 +7,12 @@
 //
 
 #import "SBBCacheManager.h"
+#import "SBBObjectManager.h"
 
 @protocol SBBObjectManagerInternalProtocol <SBBObjectManagerProtocol>
 
 @property (nonatomic, strong) id<SBBCacheManagerProtocol> cacheManager;
+@property (nonatomic, assign) BOOL bypassCache;
 
 - (id)mappedObjectForBridgeObject:(SBBBridgeObject *)bridgeObject;
 

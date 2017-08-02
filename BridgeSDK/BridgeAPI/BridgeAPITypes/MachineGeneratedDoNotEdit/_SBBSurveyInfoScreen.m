@@ -1,7 +1,7 @@
 //
-//  SBBSurveyInfoScreen.m
+//  _SBBSurveyInfoScreen.m
 //
-//	Copyright (c) 2014-2016 Sage Bionetworks
+//	Copyright (c) 2014-2017 Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,7 @@
 //	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // DO NOT EDIT. This file is machine-generated and constantly overwritten.
-// Make changes to SBBSurveyInfoScreen.h instead.
+// Make changes to SBBSurveyInfoScreen.m instead.
 //
 
 #import "_SBBSurveyInfoScreen.h"
@@ -43,8 +43,6 @@
 // see xcdoc://?url=developer.apple.com/library/etc/redirect/xcode/ios/602958/documentation/Cocoa/Conceptual/CoreData/Articles/cdAccessorMethods.html
 @interface NSManagedObject (SurveyInfoScreen)
 
-@property (nullable, nonatomic, retain) NSString* title;
-
 @property (nullable, nonatomic, retain) NSManagedObject *image;
 
 @end
@@ -53,7 +51,7 @@
 
 - (instancetype)init
 {
-	if((self = [super init]))
+	if ((self = [super init]))
 	{
 
 	}
@@ -69,14 +67,12 @@
 {
     [super updateWithDictionaryRepresentation:dictionary objectManager:objectManager];
 
-    self.title = [dictionary objectForKey:@"title"];
+    NSDictionary *imageDict = [dictionary objectForKey:@"image"];
 
-        NSDictionary *imageDict = [dictionary objectForKey:@"image"];
-    if(imageDict != nil)
+    if (imageDict != nil)
     {
         SBBImage *imageObj = [objectManager objectFromBridgeJSON:imageDict];
         self.image = imageObj;
-
     }
 
 }
@@ -85,16 +81,14 @@
 {
     NSMutableDictionary *dict = [[super dictionaryRepresentationFromObjectManager:objectManager] mutableCopy];
 
-    [dict setObjectIfNotNil:self.title forKey:@"title"];
-
-	[dict setObjectIfNotNil:[objectManager bridgeJSONFromObject:self.image] forKey:@"image"];
+    [dict setObjectIfNotNil:[objectManager bridgeJSONFromObject:self.image] forKey:@"image"];
 
 	return [dict copy];
 }
 
 - (void)awakeFromDictionaryRepresentationInit
 {
-	if(self.sourceDictionaryRepresentation == nil)
+	if (self.sourceDictionaryRepresentation == nil)
 		return; // awakeFromDictionaryRepresentationInit has been already executed on this object.
 
 	[self.image awakeFromDictionaryRepresentationInit];
@@ -104,9 +98,9 @@
 
 #pragma mark Core Data cache
 
-- (NSEntityDescription *)entityForContext:(NSManagedObjectContext *)context
++ (NSString *)entityName
 {
-    return [NSEntityDescription entityForName:@"SurveyInfoScreen" inManagedObjectContext:context];
+    return @"SurveyInfoScreen";
 }
 
 - (instancetype)initWithManagedObject:(NSManagedObject *)managedObject objectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
@@ -114,12 +108,10 @@
 
     if (self = [super initWithManagedObject:managedObject objectManager:objectManager cacheManager:cacheManager]) {
 
-        self.title = managedObject.title;
-
             NSManagedObject *imageManagedObj = managedObject.image;
         Class imageClass = [SBBObjectManager bridgeClassFromType:imageManagedObj.entity.name];
         SBBImage *imageObj = [[imageClass alloc] initWithManagedObject:imageManagedObj objectManager:objectManager cacheManager:cacheManager];
-        if(imageObj != nil)
+        if (imageObj != nil)
         {
           self.image = imageObj;
         }
@@ -153,11 +145,8 @@
 
 - (void)updateManagedObject:(NSManagedObject *)managedObject withObjectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
 {
-
     [super updateManagedObject:managedObject withObjectManager:objectManager cacheManager:cacheManager];
     NSManagedObjectContext *cacheContext = managedObject.managedObjectContext;
-
-    managedObject.title = ((id)self.title == [NSNull null]) ? nil : self.title;
 
     // destination entity Image is not directly cacheable, so delete it and create the replacement
     if (managedObject.image) {

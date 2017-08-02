@@ -1,7 +1,7 @@
 //
-//  SBBSurveyQuestion.m
+//  _SBBSurveyQuestion.m
 //
-//	Copyright (c) 2014-2016 Sage Bionetworks
+//	Copyright (c) 2014-2017 Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,7 @@
 //	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // DO NOT EDIT. This file is machine-generated and constantly overwritten.
-// Make changes to SBBSurveyQuestion.h instead.
+// Make changes to SBBSurveyQuestion.m instead.
 //
 
 #import "_SBBSurveyQuestion.h"
@@ -53,7 +53,7 @@
 
 - (instancetype)init
 {
-	if((self = [super init]))
+	if ((self = [super init]))
 	{
 
 	}
@@ -71,12 +71,12 @@
 
     self.uiHint = [dictionary objectForKey:@"uiHint"];
 
-        NSDictionary *constraintsDict = [dictionary objectForKey:@"constraints"];
-    if(constraintsDict != nil)
+    NSDictionary *constraintsDict = [dictionary objectForKey:@"constraints"];
+
+    if (constraintsDict != nil)
     {
         SBBSurveyConstraints *constraintsObj = [objectManager objectFromBridgeJSON:constraintsDict];
         self.constraints = constraintsObj;
-
     }
 
 }
@@ -87,14 +87,14 @@
 
     [dict setObjectIfNotNil:self.uiHint forKey:@"uiHint"];
 
-	[dict setObjectIfNotNil:[objectManager bridgeJSONFromObject:self.constraints] forKey:@"constraints"];
+    [dict setObjectIfNotNil:[objectManager bridgeJSONFromObject:self.constraints] forKey:@"constraints"];
 
 	return [dict copy];
 }
 
 - (void)awakeFromDictionaryRepresentationInit
 {
-	if(self.sourceDictionaryRepresentation == nil)
+	if (self.sourceDictionaryRepresentation == nil)
 		return; // awakeFromDictionaryRepresentationInit has been already executed on this object.
 
 	[self.constraints awakeFromDictionaryRepresentationInit];
@@ -104,9 +104,9 @@
 
 #pragma mark Core Data cache
 
-- (NSEntityDescription *)entityForContext:(NSManagedObjectContext *)context
++ (NSString *)entityName
 {
-    return [NSEntityDescription entityForName:@"SurveyQuestion" inManagedObjectContext:context];
+    return @"SurveyQuestion";
 }
 
 - (instancetype)initWithManagedObject:(NSManagedObject *)managedObject objectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
@@ -119,7 +119,7 @@
             NSManagedObject *constraintsManagedObj = managedObject.constraints;
         Class constraintsClass = [SBBObjectManager bridgeClassFromType:constraintsManagedObj.entity.name];
         SBBSurveyConstraints *constraintsObj = [[constraintsClass alloc] initWithManagedObject:constraintsManagedObj objectManager:objectManager cacheManager:cacheManager];
-        if(constraintsObj != nil)
+        if (constraintsObj != nil)
         {
           self.constraints = constraintsObj;
         }
@@ -153,7 +153,6 @@
 
 - (void)updateManagedObject:(NSManagedObject *)managedObject withObjectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
 {
-
     [super updateManagedObject:managedObject withObjectManager:objectManager cacheManager:cacheManager];
     NSManagedObjectContext *cacheContext = managedObject.managedObjectContext;
 

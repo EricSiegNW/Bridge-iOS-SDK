@@ -1,7 +1,7 @@
 //
-//  SBBSurveyConstraints.m
+//  _SBBSurveyConstraints.m
 //
-//	Copyright (c) 2014-2016 Sage Bionetworks
+//	Copyright (c) 2014-2017 Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,7 @@
 //	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // DO NOT EDIT. This file is machine-generated and constantly overwritten.
-// Make changes to SBBSurveyConstraints.h instead.
+// Make changes to SBBSurveyConstraints.m instead.
 //
 
 #import "_SBBSurveyConstraints.h"
@@ -37,6 +37,9 @@
 #import "SBBSurveyRule.h"
 
 @interface _SBBSurveyConstraints()
+
+// redefine relationships internally as readwrite
+
 @property (nonatomic, strong, readwrite) NSArray *rules;
 
 @end
@@ -68,7 +71,7 @@
 
 - (instancetype)init
 {
-	if((self = [super init]))
+	if ((self = [super init]))
 	{
 
 	}
@@ -87,11 +90,11 @@
     self.dataType = [dictionary objectForKey:@"dataType"];
 
     // overwrite the old rules relationship entirely rather than adding to it
-    self.rules = [NSMutableArray array];
+    [self removeRulesObjects];
 
-    for(id objectRepresentationForDict in [dictionary objectForKey:@"rules"])
+    for (id dictRepresentationForObject in [dictionary objectForKey:@"rules"])
     {
-        SBBSurveyRule *rulesObj = [objectManager objectFromBridgeJSON:objectRepresentationForDict];
+        SBBSurveyRule *rulesObj = [objectManager objectFromBridgeJSON:dictRepresentationForObject];
 
         [self addRulesObject:rulesObj];
     }
@@ -104,13 +107,14 @@
 
     [dict setObjectIfNotNil:self.dataType forKey:@"dataType"];
 
-    if([self.rules count] > 0)
+    if ([self.rules count] > 0)
 	{
 
 		NSMutableArray *rulesRepresentationsForDictionary = [NSMutableArray arrayWithCapacity:[self.rules count]];
-		for(SBBSurveyRule *obj in self.rules)
-		{
-			[rulesRepresentationsForDictionary addObject:[objectManager bridgeJSONFromObject:obj]];
+
+		for (SBBSurveyRule *obj in self.rules)
+        {
+            [rulesRepresentationsForDictionary addObject:[objectManager bridgeJSONFromObject:obj]];
 		}
 		[dict setObjectIfNotNil:rulesRepresentationsForDictionary forKey:@"rules"];
 
@@ -121,10 +125,10 @@
 
 - (void)awakeFromDictionaryRepresentationInit
 {
-	if(self.sourceDictionaryRepresentation == nil)
+	if (self.sourceDictionaryRepresentation == nil)
 		return; // awakeFromDictionaryRepresentationInit has been already executed on this object.
 
-	for(SBBSurveyRule *rulesObj in self.rules)
+	for (SBBSurveyRule *rulesObj in self.rules)
 	{
 		[rulesObj awakeFromDictionaryRepresentationInit];
 	}
@@ -134,9 +138,9 @@
 
 #pragma mark Core Data cache
 
-- (NSEntityDescription *)entityForContext:(NSManagedObjectContext *)context
++ (NSString *)entityName
 {
-    return [NSEntityDescription entityForName:@"SurveyConstraints" inManagedObjectContext:context];
+    return @"SurveyConstraints";
 }
 
 - (instancetype)initWithManagedObject:(NSManagedObject *)managedObject objectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
@@ -146,11 +150,11 @@
 
         self.dataType = managedObject.dataType;
 
-		for(NSManagedObject *rulesManagedObj in managedObject.rules)
+		for (NSManagedObject *rulesManagedObj in managedObject.rules)
 		{
             Class objectClass = [SBBObjectManager bridgeClassFromType:rulesManagedObj.entity.name];
             SBBSurveyRule *rulesObj = [[objectClass alloc] initWithManagedObject:rulesManagedObj objectManager:objectManager cacheManager:cacheManager];
-            if(rulesObj != nil)
+            if (rulesObj != nil)
             {
                 [self addRulesObject:rulesObj];
             }
@@ -185,23 +189,22 @@
 
 - (void)updateManagedObject:(NSManagedObject *)managedObject withObjectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
 {
-
     [super updateManagedObject:managedObject withObjectManager:objectManager cacheManager:cacheManager];
     NSManagedObjectContext *cacheContext = managedObject.managedObjectContext;
 
     managedObject.dataType = ((id)self.dataType == [NSNull null]) ? nil : self.dataType;
 
     // first make a copy of the existing relationship collection, to iterate through while mutating original
-    id rulesCopy = managedObject.rules;
+    NSOrderedSet *rulesCopy = [managedObject.rules copy];
 
     // now remove all items from the existing relationship
-    NSMutableOrderedSet *rulesSet = [managedObject.rules mutableCopy];
-    [rulesSet removeAllObjects];
-    managedObject.rules = rulesSet;
+    // to work pre-iOS 10, we have to work around this issue: http://stackoverflow.com/questions/7385439/exception-thrown-in-nsorderedset-generated-accessors
+    NSMutableOrderedSet *workingRulesSet = [managedObject mutableOrderedSetValueForKey:NSStringFromSelector(@selector(rules))];
+    [workingRulesSet removeAllObjects];
 
     // now put the "new" items, if any, into the relationship
-    if([self.rules count] > 0) {
-		for(SBBSurveyRule *obj in self.rules) {
+    if ([self.rules count] > 0) {
+		for (SBBSurveyRule *obj in self.rules) {
             NSManagedObject *relMo = nil;
             if ([obj isDirectlyCacheableWithContext:cacheContext]) {
                 // get it from the cache manager
@@ -211,17 +214,16 @@
                 // sub object is not directly cacheable, or not currently cached, so create it before adding
                 relMo = [obj createInContext:cacheContext withObjectManager:objectManager cacheManager:cacheManager];
             }
-            NSMutableOrderedSet *rulesSet = [managedObject mutableOrderedSetValueForKey:@"rules"];
-            [rulesSet addObject:relMo];
-            managedObject.rules = rulesSet;
+
+            [workingRulesSet addObject:relMo];
 
         }
 	}
 
-    // now delete any objects that aren't still in the relationship
+    // now release any objects that aren't still in the relationship (they will be deleted when they no longer belong to any to-many relationships)
     for (NSManagedObject *relMo in rulesCopy) {
         if (![relMo valueForKey:@"surveyConstraints"]) {
-           [cacheContext deleteObject:relMo];
+           [self releaseManagedObject:relMo inContext:cacheContext];
         }
     }
 
@@ -235,7 +237,7 @@
 
 - (void)addRulesObject:(SBBSurveyRule*)value_ settingInverse: (BOOL) setInverse
 {
-    if(self.rules == nil)
+    if (self.rules == nil)
 	{
 
 		self.rules = [NSMutableArray array];
@@ -245,6 +247,7 @@
 	[(NSMutableArray *)self.rules addObject:value_];
 
 }
+
 - (void)addRulesObject:(SBBSurveyRule*)value_
 {
     [self addRulesObject:(SBBSurveyRule*)value_ settingInverse: YES];
@@ -253,7 +256,7 @@
 - (void)removeRulesObjects
 {
 
-	self.rules = [NSMutableArray array];
+    self.rules = [NSMutableArray array];
 
 }
 
@@ -261,6 +264,7 @@
 {
 
     [(NSMutableArray *)self.rules removeObject:value_];
+
 }
 
 - (void)removeRulesObject:(SBBSurveyRule*)value_

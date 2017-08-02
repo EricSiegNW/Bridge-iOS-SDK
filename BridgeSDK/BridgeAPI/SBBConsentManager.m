@@ -32,15 +32,17 @@
 
 #import "SBBConsentManagerInternal.h"
 #import "SBBComponentManager.h"
-#import "SBBAuthManager.h"
+#import "SBBAuthManagerInternal.h"
 #import "SBBUserManagerInternal.h"
-#import "BridgeSDKInternal.h"
+#import "BridgeSDK+Internal.h"
 #import "SBBConsentSignature.h"
 #import "SBBUserSessionInfo.h"
 #import "SBBObjectManager.h"
+#import "SBBParticipantManagerInternal.h"
+#import "ModelObjectInternal.h"
 
-#define CONSENT_API GLOBAL_API_PREFIX @"/consents/signature"
-#define CONSENT_SUBPOPULATIONS_API_FORMAT GLOBAL_API_PREFIX @"/subpopulations/%@/consents/signature"
+#define CONSENT_API V3_API_PREFIX @"/consents/signature"
+#define CONSENT_SUBPOPULATIONS_API_FORMAT V3_API_PREFIX @"/subpopulations/%@/consents/signature"
 
 // deprecated APIs
 NSString * const kSBBConsentAPI = CONSENT_API;
@@ -70,17 +72,17 @@ NSString * const kSBBMimeTypePng = @"image/png";
 - (NSURLSessionTask *)consentSignature:(NSString *)name
                              birthdate:(NSDate *)date
                         signatureImage:(UIImage*)signatureImage
-                           dataSharing:(SBBUserDataSharingScope)scope
+                           dataSharing:(SBBParticipantDataSharingScope)scope
                             completion:(SBBConsentManagerCompletionBlock)completion
 {
-    return [self consentSignature:name forSubpopulationGuid:gSBBAppStudy birthdate:date signatureImage:signatureImage dataSharing:scope completion:completion];
+    return [self consentSignature:name forSubpopulationGuid:[SBBBridgeInfo shared].studyIdentifier birthdate:date signatureImage:signatureImage dataSharing:scope completion:completion];
 }
 
 - (NSURLSessionTask *)consentSignature:(NSString *)name
                   forSubpopulationGuid:(NSString *)subpopGuid
                              birthdate:(NSDate *)date
                         signatureImage:(UIImage*)signatureImage
-                           dataSharing:(SBBUserDataSharingScope)scope
+                           dataSharing:(SBBParticipantDataSharingScope)scope
                             completion:(SBBConsentManagerCompletionBlock)completion
 {
     NSMutableDictionary *headers = [NSMutableDictionary dictionary];
@@ -106,6 +108,23 @@ NSString * const kSBBMimeTypePng = @"image/png";
     NSString *endpoint = [NSString stringWithFormat:kSBBConsentSubpopulationsAPIFormat, subpopGuid];
     return [self.networkManager post:endpoint headers:headers parameters:researchConsent
                           completion:^(NSURLSessionTask *task, id responseObject, NSError *error) {
+                              if (!error) {
+                                  if (gSBBUseCache) {
+                                      // The respose is a UserSessionInfo object, which includes a StudyParticipant with the updated sharing scope.
+                                      // Since client-writable objects are not updated from the server once first cached, we need to clear this
+                                      // out of our cache before reading the response object into the cache so we will get the server-side changes.
+                                      
+                                      [(id <SBBUserManagerInternalProtocol>)SBBComponent(SBBUserManager) clearUserInfoFromCache];
+                                      [(id <SBBParticipantManagerInternalProtocol>)SBBComponent(SBBParticipantManager) clearUserInfoFromCache];
+                                      
+                                      // This method's signature was set in stone before UserSessionInfo existed, let alone StudyParticipant
+                                      // (which UserSessionInfo now extends). So we can't return the values from here, but we do
+                                      // want to update them in the cache, which calling objectFromBridgeJSON: will do; and we do want to notify
+                                      // the auth delegate (if any).
+                                      id sessionInfo = [SBBComponent(SBBObjectManager) objectFromBridgeJSON:responseObject];
+                                      [(id<SBBAuthManagerInternalProtocol>)(self.authManager) notifyDelegateOfNewSessionInfo:sessionInfo];
+                                  }
+                              }
                               if (completion) {
                                   completion(responseObject, error);
                               }
@@ -114,7 +133,7 @@ NSString * const kSBBMimeTypePng = @"image/png";
 
 - (NSURLSessionTask *)retrieveConsentSignatureWithCompletion:(SBBConsentManagerRetrieveCompletionBlock)completion
 {
-    return [self getConsentSignatureForSubpopulation:gSBBAppStudy completion:^(id consentSignature, NSError *error) {
+    return [self getConsentSignatureForSubpopulation:[SBBBridgeInfo shared].studyIdentifier completion:^(id consentSignature, NSError *error) {
         NSString* name = nil;
         NSString* birthdate = nil;
         UIImage* image = nil;
@@ -152,7 +171,7 @@ NSString * const kSBBMimeTypePng = @"image/png";
 
 - (NSURLSessionTask *)withdrawConsentWithReason:(NSString *)reason completion:(SBBConsentManagerCompletionBlock)completion
 {
-    return [self withdrawConsentForSubpopulation:gSBBAppStudy withReason:reason completion:completion];
+    return [self withdrawConsentForSubpopulation:[SBBBridgeInfo shared].studyIdentifier withReason:reason completion:completion];
 }
 
 - (NSURLSessionTask *)withdrawConsentForSubpopulation:(NSString *)subpopGuid withReason:(NSString *)reason completion:(SBBConsentManagerCompletionBlock)completion

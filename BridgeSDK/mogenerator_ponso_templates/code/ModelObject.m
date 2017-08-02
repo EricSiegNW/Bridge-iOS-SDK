@@ -147,6 +147,24 @@
     self.sourceDictionaryRepresentation = dictionary;
 }
 
+- (void)reconcileWithDictionaryRepresentation:(NSDictionary *)dictionary objectManager:(id<SBBObjectManagerInternalProtocol>)objectManager
+{
+    // This method is only called during caching operations.
+    
+    // This default implementation just calls updateWithDictionaryRepresentation:objectManager: for
+    // entities that aren't marked as having client-writable fields, either directly, or by implication
+    // by virtue of being marked as extendable; otherwise it does nothing. Thus, for non-client-modifiable
+    // objects the server version is always canonical, and for client-modifiable objects the locally
+    // cached version takes precedence.
+    
+    // Subclasses can override this method to provide different behavior.
+    NSManagedObjectContext *cacheContext = objectManager.cacheManager.cacheIOContext;
+    NSEntityDescription *entity = [self entityForContext:cacheContext];
+    if (!(entity.userInfo[@"hasClientWritableFields"] || entity.userInfo[@"isExtendable"])) {
+        [self updateWithDictionaryRepresentation:dictionary objectManager:objectManager];
+    }
+}
+
 - (NSDictionary *)dictionaryRepresentation
 {
     return [self dictionaryRepresentationFromObjectManager:self.creatingObjectManager ?: SBBComponent(SBBObjectManager)];
@@ -170,10 +188,20 @@
     return (entityIDKeyPath.length > 0);
 }
 
++ (NSString *)entityName
+{
+    // generated subclasses will override this
+    return nil;
+}
+
 - (NSEntityDescription *)entityForContext:(NSManagedObjectContext *)context
 {
-    // will be overridden in generated classes that have an entityIDKeyPath defined in their userInfo in the model
-    return nil;
+    return [self.class entityForContext:context];
+}
+
++ (NSEntityDescription *)entityForContext:(NSManagedObjectContext *)context
+{
+    return [NSEntityDescription entityForName:self.entityName inManagedObjectContext:context];
 }
 
 - (instancetype)initWithManagedObject:(NSManagedObject *)managedObject objectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
@@ -199,7 +227,7 @@
                 // if there's an entityIDKeyPath, we're going to look for an existing object to update
                 NSManagedObject *existingObject = nil;
                 if (entityIDKeyPath.length) {
-                    NSString *entityID = [[self dictionaryRepresentationFromObjectManager:objectManager] valueForKeyPath:entityIDKeyPath];
+                    NSString *entityID = [self valueForKeyPath:entityIDKeyPath];
                     existingObject = [cacheManager managedObjectOfEntity:entity withId:entityID atKeyPath:entityIDKeyPath];
                 }
                 
@@ -225,6 +253,13 @@
 - (void)updateManagedObject:(NSManagedObject *)managedObject withObjectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
 {
     // generated subclasses will override this
+}
+
+- (void)releaseManagedObject:(NSManagedObject *)managedObject inContext:(NSManagedObjectContext *)cacheContext
+{
+    // subclasses that are directly cacheable, and can be a member of more than one to-many relationship,
+    // should override this to only delete when no longer a member of any of them
+    [cacheContext deleteObject:managedObject];
 }
 
 - (void)dealloc

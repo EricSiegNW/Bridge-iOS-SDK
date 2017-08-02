@@ -1,7 +1,7 @@
 //
-//  SBBUserProfile.m
+//  _SBBUserProfile.m
 //
-//	Copyright (c) 2014-2016 Sage Bionetworks
+//	Copyright (c) 2014-2017 Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,7 @@
 //	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // DO NOT EDIT. This file is machine-generated and constantly overwritten.
-// Make changes to SBBUserProfile.h instead.
+// Make changes to SBBUserProfile.m instead.
 //
 
 #import "_SBBUserProfile.h"
@@ -61,7 +61,7 @@
 
 - (instancetype)init
 {
-	if((self = [super init]))
+	if ((self = [super init]))
 	{
 
 	}
@@ -174,8 +174,13 @@ static id dynamicGetterIMP(id self, SEL _cmd)
 
 - (NSArray *)originalProperties
 {
-    NSMutableArray *props = [@[@"email", @"firstName", @"lastName", @"type", @"__end_of_properties__"] mutableCopy];
-    [props removeLastObject];
+    static NSArray *props;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSMutableArray *localProps = [@[@"email", @"firstName", @"lastName", @"type", @"__end_of_properties__"] mutableCopy];
+        [localProps removeLastObject];
+        props = [localProps copy];
+    });
 
     return props;
 }
@@ -194,12 +199,20 @@ static id dynamicGetterIMP(id self, SEL _cmd)
     NSPredicate *pred = [NSPredicate predicateWithFormat:@"NOT (SELF IN %@)", self.originalProperties];
     NSArray *customProperties = [dictionary.allKeys filteredArrayUsingPredicate:pred];
     for (NSString *propertyName in customProperties) {
+        if (class_getProperty([self class], [propertyName UTF8String]) == NULL) {
+            // we don't know about this property (probably a new base property added on the server) so ignore it
+            continue;
+        }
+
         // Assuming custom properties are not readonly, and why would they be, after all?
         // ...also assume they are JSON types (NSString, NSNumber, NSNull, NSArray<JSON-types>, NSDictionary<JSON-types>)
         // ...and that they are not using custom setter names.
         id value = [dictionary objectForKey:propertyName];
         if (![self typeIsNSString:propertyName]) {
-            // Custom properties are always serialized as JSON NSStrings.
+            // Custom properties are always serialized as JSON NSStrings. If it's not an NSString, assume it's not one of our known custom ones and just ignore it.
+            if (![value isKindOfClass:[NSString class]]) {
+                continue;
+            }
             value = [NSJSONSerialization JSONObjectWithData:[value dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil];
         }
         NSString *camelizedProp = [[[propertyName substringToIndex:1] uppercaseString] stringByAppendingString:[propertyName substringFromIndex:1]];
@@ -239,7 +252,7 @@ static id dynamicGetterIMP(id self, SEL _cmd)
 
 - (void)awakeFromDictionaryRepresentationInit
 {
-	if(self.sourceDictionaryRepresentation == nil)
+	if (self.sourceDictionaryRepresentation == nil)
 		return; // awakeFromDictionaryRepresentationInit has been already executed on this object.
 
 	[super awakeFromDictionaryRepresentationInit];
@@ -247,9 +260,9 @@ static id dynamicGetterIMP(id self, SEL _cmd)
 
 #pragma mark Core Data cache
 
-- (NSEntityDescription *)entityForContext:(NSManagedObjectContext *)context
++ (NSString *)entityName
 {
-    return [NSEntityDescription entityForName:@"UserProfile" inManagedObjectContext:context];
+    return @"UserProfile";
 }
 
 - (instancetype)initWithManagedObject:(NSManagedObject *)managedObject objectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
@@ -292,7 +305,6 @@ static id dynamicGetterIMP(id self, SEL _cmd)
 
 - (void)updateManagedObject:(NSManagedObject *)managedObject withObjectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
 {
-
     NSDictionary *jsonDict = [objectManager bridgeJSONFromObject:self];
     NSError *error;
     NSData *plaintext = [NSJSONSerialization dataWithJSONObject:jsonDict options:0 error:&error];
@@ -303,6 +315,11 @@ static id dynamicGetterIMP(id self, SEL _cmd)
             managedObject.ciphertext = ciphertext;
         }
     }
+
+    // fill in the key used for caching this object type so we can still use the usual
+    // fetch requests with predicates to find it in CoreData in spite of being encrypted.
+    id keyValue = ((id)self.type == [NSNull null]) ? nil : self.type;
+    [managedObject setValue:keyValue forKey:@"type"];
 
     // Calling code will handle saving these changes to cacheContext.
 }

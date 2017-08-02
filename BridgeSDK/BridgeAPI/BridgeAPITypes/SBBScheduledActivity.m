@@ -28,11 +28,91 @@
 //
 
 #import "SBBScheduledActivity.h"
+#import "ModelObjectInternal.h"
+
+NSString * const SBBScheduledActivityStatusStringScheduled = @"scheduled";
+NSString * const SBBScheduledActivityStatusStringAvailable = @"available";
+NSString * const SBBScheduledActivityStatusStringStarted = @"started";
+NSString * const SBBScheduledActivityStatusStringFinished = @"finished";
+NSString * const SBBScheduledActivityStatusStringExpired = @"expired";
+NSString * const SBBScheduledActivityStatusStringDeleted = @"deleted";
 
 @implementation SBBScheduledActivity
 
 #pragma mark Abstract method overrides
 
 // Custom logic goes here.
+
+- (SBBScheduledActivityStatus)statusEnum
+{
+    BOOL started = (self.startedOn != nil);
+    BOOL finished = (self.finishedOn != nil);
+    BOOL available = ([self.scheduledOn timeIntervalSinceNow] <= 0);
+    BOOL expired = ([self.expiresOn timeIntervalSinceNow] >= 0);
+    
+    SBBScheduledActivityStatus status = SBBScheduledActivityStatusScheduled;
+    if (started) {
+        if (finished) {
+            status = SBBScheduledActivityStatusFinished;
+        } else {
+            status = SBBScheduledActivityStatusStarted;
+        }
+    } else if (finished) {
+        status = SBBScheduledActivityStatusDeleted;
+    } else if (expired) {
+        status = SBBScheduledActivityStatusExpired;
+    } else if (available) {
+        status = SBBScheduledActivityStatusAvailable;
+    }
+    return status;
+}
+
+- (NSString *)status
+{
+    static NSArray<NSString *> *stringsForStatuses = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        stringsForStatuses =
+        @[
+          SBBScheduledActivityStatusStringScheduled,
+          SBBScheduledActivityStatusStringAvailable,
+          SBBScheduledActivityStatusStringStarted,
+          SBBScheduledActivityStatusStringFinished,
+          SBBScheduledActivityStatusStringExpired,
+          SBBScheduledActivityStatusStringDeleted
+          ];
+
+    });
+    
+    return stringsForStatuses[[self statusEnum]];
+}
+
+- (BOOL)validateClientData:(id<SBBJSONValue> *)clientData error:(NSError **)error
+{
+    return [*clientData validateJSONWithError:error];
+}
+
+- (void)reconcileWithDictionaryRepresentation:(NSDictionary *)dictionary objectManager:(id<SBBObjectManagerInternalProtocol>)objectManager
+{
+    // For all but the client-writable fields, the server value is completely canonical.
+    // For the client-writable fields, the client value is canonical unless it is nil.
+    NSDate *savedStartedOn = self.startedOn;
+    NSDate *savedFinishedOn = self.finishedOn;
+    id<SBBJSONValue> savedClientData = self.clientData;
+    
+    [self updateWithDictionaryRepresentation:dictionary objectManager:objectManager];
+    
+    if (savedStartedOn) {
+        self.startedOn = savedStartedOn;
+    }
+    
+    if (savedFinishedOn) {
+        self.finishedOn = savedFinishedOn;
+    }
+    
+    if (savedClientData) {
+        self.clientData = savedClientData;
+    }
+}
 
 @end

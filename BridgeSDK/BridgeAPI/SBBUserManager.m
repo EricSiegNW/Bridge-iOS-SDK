@@ -2,9 +2,7 @@
 //  SBBUserManager.m
 //  BridgeSDK
 //
-//  Created by Erin Mounts on 9/23/14.
-//
-//	Copyright (c) 2014, Sage Bionetworks
+//	Copyright (c) 2014-2016, Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -34,13 +32,16 @@
 #import "SBBComponentManager.h"
 #import "SBBAuthManager.h"
 #import "SBBObjectManager.h"
-#import "BridgeSDKInternal.h"
+#import "BridgeSDK+Internal.h"
 #import "NSDate+SBBAdditions.h"
 #import "SBBDataGroups.h"
 #import "SBBCacheManager.h"
 #import "SBBActivityManagerInternal.h"
+#import "SBBUserProfile.h"
+#import "SBBDataGroups.h"
+#import "ModelObjectInternal.h"
 
-#define USER_API GLOBAL_API_PREFIX @"/users/self"
+#define USER_API V3_API_PREFIX @"/users/self"
 
 NSString * const kSBBUserProfileAPI =       USER_API;
 NSString * const kSBBUserExternalIdAPI =    USER_API @"/externalId";
@@ -62,6 +63,9 @@ NSString* const kSBBUserDataSharingScopeStrings[] = {
 @implementation SBBUserManager
 
 @synthesize activityManager = _activityManager;
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
 + (instancetype)defaultComponent
 {
@@ -239,5 +243,18 @@ NSString* const kSBBUserDataSharingScopeStrings[] = {
         }
     }];
 }
+
+- (void)clearUserInfoFromCache
+{
+    NSString *profileType = [SBBUserProfile entityName];
+    NSString *dataGroupsType = [SBBDataGroups entityName];
+    
+    // remove them from cache. note: we use the Bridge type (which is the same as the CoreData entity name) as the unique key
+    // to treat a class as a singleton for caching purposes.
+    [self.cacheManager removeFromCacheObjectOfType:profileType withId:profileType];
+    [self.cacheManager removeFromCacheObjectOfType:dataGroupsType withId:dataGroupsType];
+}
+
+#pragma clang diagnostic pop
 
 @end

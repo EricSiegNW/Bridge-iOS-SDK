@@ -1,7 +1,7 @@
 //
-//  SBBSurveyReference.m
+//  _SBBSurveyReference.m
 //
-//	Copyright (c) 2014-2016 Sage Bionetworks
+//	Copyright (c) 2014-2017 Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,7 @@
 //	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // DO NOT EDIT. This file is machine-generated and constantly overwritten.
-// Make changes to SBBSurveyReference.h instead.
+// Make changes to SBBSurveyReference.m instead.
 //
 
 #import "_SBBSurveyReference.h"
@@ -47,7 +47,11 @@
 
 @property (nullable, nonatomic, retain) NSString* href;
 
-@property (nullable, nonatomic, retain) NSManagedObject *activityForSurvey;
+@property (nullable, nonatomic, retain) NSString* identifier;
+
+@property (nullable, nonatomic, retain) NSManagedObject *activity;
+
+@property (nullable, nonatomic, retain) NSManagedObject *compoundActivity;
 
 @end
 
@@ -55,7 +59,7 @@
 
 - (instancetype)init
 {
-	if((self = [super init]))
+	if ((self = [super init]))
 	{
 
 	}
@@ -77,6 +81,8 @@
 
     self.href = [dictionary objectForKey:@"href"];
 
+    self.identifier = [dictionary objectForKey:@"identifier"];
+
 }
 
 - (NSDictionary *)dictionaryRepresentationFromObjectManager:(id<SBBObjectManagerProtocol>)objectManager
@@ -89,12 +95,14 @@
 
     [dict setObjectIfNotNil:self.href forKey:@"href"];
 
+    [dict setObjectIfNotNil:self.identifier forKey:@"identifier"];
+
 	return [dict copy];
 }
 
 - (void)awakeFromDictionaryRepresentationInit
 {
-	if(self.sourceDictionaryRepresentation == nil)
+	if (self.sourceDictionaryRepresentation == nil)
 		return; // awakeFromDictionaryRepresentationInit has been already executed on this object.
 
 	[super awakeFromDictionaryRepresentationInit];
@@ -102,9 +110,9 @@
 
 #pragma mark Core Data cache
 
-- (NSEntityDescription *)entityForContext:(NSManagedObjectContext *)context
++ (NSString *)entityName
 {
-    return [NSEntityDescription entityForName:@"SurveyReference" inManagedObjectContext:context];
+    return @"SurveyReference";
 }
 
 - (instancetype)initWithManagedObject:(NSManagedObject *)managedObject objectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
@@ -117,6 +125,8 @@
         self.guid = managedObject.guid;
 
         self.href = managedObject.href;
+
+        self.identifier = managedObject.identifier;
 
     }
 
@@ -148,7 +158,6 @@
 
 - (void)updateManagedObject:(NSManagedObject *)managedObject withObjectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
 {
-
     [super updateManagedObject:managedObject withObjectManager:objectManager cacheManager:cacheManager];
 
     managedObject.createdOn = ((id)self.createdOn == [NSNull null]) ? nil : self.createdOn;
@@ -156,6 +165,8 @@
     managedObject.guid = ((id)self.guid == [NSNull null]) ? nil : self.guid;
 
     managedObject.href = ((id)self.href == [NSNull null]) ? nil : self.href;
+
+    managedObject.identifier = ((id)self.identifier == [NSNull null]) ? nil : self.identifier;
 
     // Calling code will handle saving these changes to cacheContext.
 }

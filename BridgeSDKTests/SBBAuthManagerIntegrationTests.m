@@ -16,6 +16,9 @@
 
 @implementation SBBAuthManagerIntegrationTests
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 - (void)setUp {
     [super setUp];
     // Put setup code here. This method is called before the invocation of each test method in the class.
@@ -112,7 +115,7 @@
         }
     }];
     
-    [self waitForExpectationsWithTimeout:5.0 handler:^(NSError *error) {
+    [self waitForExpectationsWithTimeout:10.0 handler:^(NSError *error) {
         if (error) {
             NSLog(@"Timeout signing in with unconsented user: %@", error);
         }
@@ -149,7 +152,7 @@
         }
     }];
     
-    [self waitForExpectationsWithTimeout:5.0 handler:^(NSError *error) {
+    [self waitForExpectationsWithTimeout:10.0 handler:^(NSError *error) {
         if (error) {
             NSLog(@"Timeout signing in with consented user: %@", error);
         }
@@ -162,6 +165,7 @@
             NSLog(@"Error signing out from account %@:\n%@\nResponse: %@", consentedEmail, error, responseObject);
         }
         XCTAssert(!aMan.isAuthenticated && [responseObject[@"message"] isEqualToString:@"Signed out."], @"Successfully signed out");
+        XCTAssertNil(delegate.sessionInfo, @"Expected the delegate to have been told to clear the sessionInfo, but it still has this:\n%@", delegate.sessionInfo);
         [expectSignedOut fulfill];
     }];
     
@@ -171,5 +175,7 @@
         }
     }];
 }
+
+#pragma clang diagnostic pop
 
 @end

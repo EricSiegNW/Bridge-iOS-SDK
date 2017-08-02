@@ -1,7 +1,7 @@
 //
-//  SBBSurveyQuestionOption.m
+//  _SBBSurveyQuestionOption.m
 //
-//	Copyright (c) 2014-2016 Sage Bionetworks
+//	Copyright (c) 2014-2017 Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,7 @@
 //	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // DO NOT EDIT. This file is machine-generated and constantly overwritten.
-// Make changes to SBBSurveyQuestionOption.h instead.
+// Make changes to SBBSurveyQuestionOption.m instead.
 //
 
 #import "_SBBSurveyQuestionOption.h"
@@ -59,7 +59,7 @@
 
 - (instancetype)init
 {
-	if((self = [super init]))
+	if ((self = [super init]))
 	{
 
 	}
@@ -81,12 +81,12 @@
 
     self.value = [dictionary objectForKey:@"value"];
 
-        NSDictionary *imageDict = [dictionary objectForKey:@"image"];
-    if(imageDict != nil)
+    NSDictionary *imageDict = [dictionary objectForKey:@"image"];
+
+    if (imageDict != nil)
     {
         SBBImage *imageObj = [objectManager objectFromBridgeJSON:imageDict];
         self.image = imageObj;
-
     }
 
 }
@@ -101,14 +101,14 @@
 
     [dict setObjectIfNotNil:self.value forKey:@"value"];
 
-	[dict setObjectIfNotNil:[objectManager bridgeJSONFromObject:self.image] forKey:@"image"];
+    [dict setObjectIfNotNil:[objectManager bridgeJSONFromObject:self.image] forKey:@"image"];
 
 	return [dict copy];
 }
 
 - (void)awakeFromDictionaryRepresentationInit
 {
-	if(self.sourceDictionaryRepresentation == nil)
+	if (self.sourceDictionaryRepresentation == nil)
 		return; // awakeFromDictionaryRepresentationInit has been already executed on this object.
 
 	[self.image awakeFromDictionaryRepresentationInit];
@@ -118,9 +118,9 @@
 
 #pragma mark Core Data cache
 
-- (NSEntityDescription *)entityForContext:(NSManagedObjectContext *)context
++ (NSString *)entityName
 {
-    return [NSEntityDescription entityForName:@"SurveyQuestionOption" inManagedObjectContext:context];
+    return @"SurveyQuestionOption";
 }
 
 - (instancetype)initWithManagedObject:(NSManagedObject *)managedObject objectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
@@ -137,7 +137,7 @@
             NSManagedObject *imageManagedObj = managedObject.image;
         Class imageClass = [SBBObjectManager bridgeClassFromType:imageManagedObj.entity.name];
         SBBImage *imageObj = [[imageClass alloc] initWithManagedObject:imageManagedObj objectManager:objectManager cacheManager:cacheManager];
-        if(imageObj != nil)
+        if (imageObj != nil)
         {
           self.image = imageObj;
         }
@@ -171,7 +171,6 @@
 
 - (void)updateManagedObject:(NSManagedObject *)managedObject withObjectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
 {
-
     [super updateManagedObject:managedObject withObjectManager:objectManager cacheManager:cacheManager];
     NSManagedObjectContext *cacheContext = managedObject.managedObjectContext;
 

@@ -1,7 +1,7 @@
 //
-//  SBBScheduledActivity.m
+//  _SBBScheduledActivity.m
 //
-//	Copyright (c) 2014-2016 Sage Bionetworks
+//	Copyright (c) 2014-2017 Sage Bionetworks
 //	All rights reserved.
 //
 //	Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,7 @@
 //	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // DO NOT EDIT. This file is machine-generated and constantly overwritten.
-// Make changes to SBBScheduledActivity.h instead.
+// Make changes to SBBScheduledActivity.m instead.
 //
 
 #import "_SBBScheduledActivity.h"
@@ -43,6 +43,8 @@
 // see xcdoc://?url=developer.apple.com/library/etc/redirect/xcode/ios/602958/documentation/Cocoa/Conceptual/CoreData/Articles/cdAccessorMethods.html
 @interface NSManagedObject (ScheduledActivity)
 
+@property (nullable, nonatomic, retain) id<SBBJSONValue> clientData;
+
 @property (nullable, nonatomic, retain) NSDate* expiresOn;
 
 @property (nullable, nonatomic, retain) NSDate* finishedOn;
@@ -55,8 +57,6 @@
 
 @property (nullable, nonatomic, retain) NSDate* startedOn;
 
-@property (nullable, nonatomic, retain) NSString* status;
-
 @property (nullable, nonatomic, retain) NSManagedObject *activity;
 
 @end
@@ -65,7 +65,7 @@
 
 - (instancetype)init
 {
-	if((self = [super init]))
+	if ((self = [super init]))
 	{
 
 	}
@@ -91,6 +91,8 @@
 {
     [super updateWithDictionaryRepresentation:dictionary objectManager:objectManager];
 
+    self.clientData = [dictionary objectForKey:@"clientData"];
+
     self.expiresOn = [NSDate dateWithISO8601String:[dictionary objectForKey:@"expiresOn"]];
 
     self.finishedOn = [NSDate dateWithISO8601String:[dictionary objectForKey:@"finishedOn"]];
@@ -103,14 +105,12 @@
 
     self.startedOn = [NSDate dateWithISO8601String:[dictionary objectForKey:@"startedOn"]];
 
-    self.status = [dictionary objectForKey:@"status"];
+    NSDictionary *activityDict = [dictionary objectForKey:@"activity"];
 
-        NSDictionary *activityDict = [dictionary objectForKey:@"activity"];
-    if(activityDict != nil)
+    if (activityDict != nil)
     {
         SBBActivity *activityObj = [objectManager objectFromBridgeJSON:activityDict];
         self.activity = activityObj;
-
     }
 
 }
@@ -118,6 +118,8 @@
 - (NSDictionary *)dictionaryRepresentationFromObjectManager:(id<SBBObjectManagerProtocol>)objectManager
 {
     NSMutableDictionary *dict = [[super dictionaryRepresentationFromObjectManager:objectManager] mutableCopy];
+
+    [dict setObjectIfNotNil:self.clientData forKey:@"clientData"];
 
     [dict setObjectIfNotNil:[self.expiresOn ISO8601String] forKey:@"expiresOn"];
 
@@ -131,16 +133,14 @@
 
     [dict setObjectIfNotNil:[self.startedOn ISO8601String] forKey:@"startedOn"];
 
-    [dict setObjectIfNotNil:self.status forKey:@"status"];
-
-	[dict setObjectIfNotNil:[objectManager bridgeJSONFromObject:self.activity] forKey:@"activity"];
+    [dict setObjectIfNotNil:[objectManager bridgeJSONFromObject:self.activity] forKey:@"activity"];
 
 	return [dict copy];
 }
 
 - (void)awakeFromDictionaryRepresentationInit
 {
-	if(self.sourceDictionaryRepresentation == nil)
+	if (self.sourceDictionaryRepresentation == nil)
 		return; // awakeFromDictionaryRepresentationInit has been already executed on this object.
 
 	[self.activity awakeFromDictionaryRepresentationInit];
@@ -150,15 +150,17 @@
 
 #pragma mark Core Data cache
 
-- (NSEntityDescription *)entityForContext:(NSManagedObjectContext *)context
++ (NSString *)entityName
 {
-    return [NSEntityDescription entityForName:@"ScheduledActivity" inManagedObjectContext:context];
+    return @"ScheduledActivity";
 }
 
 - (instancetype)initWithManagedObject:(NSManagedObject *)managedObject objectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
 {
 
     if (self = [super initWithManagedObject:managedObject objectManager:objectManager cacheManager:cacheManager]) {
+
+        self.clientData = managedObject.clientData;
 
         self.expiresOn = managedObject.expiresOn;
 
@@ -172,12 +174,10 @@
 
         self.startedOn = managedObject.startedOn;
 
-        self.status = managedObject.status;
-
             NSManagedObject *activityManagedObj = managedObject.activity;
         Class activityClass = [SBBObjectManager bridgeClassFromType:activityManagedObj.entity.name];
         SBBActivity *activityObj = [[activityClass alloc] initWithManagedObject:activityManagedObj objectManager:objectManager cacheManager:cacheManager];
-        if(activityObj != nil)
+        if (activityObj != nil)
         {
           self.activity = activityObj;
         }
@@ -211,9 +211,10 @@
 
 - (void)updateManagedObject:(NSManagedObject *)managedObject withObjectManager:(id<SBBObjectManagerProtocol>)objectManager cacheManager:(id<SBBCacheManagerProtocol>)cacheManager
 {
-
     [super updateManagedObject:managedObject withObjectManager:objectManager cacheManager:cacheManager];
     NSManagedObjectContext *cacheContext = managedObject.managedObjectContext;
+
+    managedObject.clientData = ((id)self.clientData == [NSNull null]) ? nil : self.clientData;
 
     managedObject.expiresOn = ((id)self.expiresOn == [NSNull null]) ? nil : self.expiresOn;
 
@@ -226,8 +227,6 @@
     managedObject.scheduledOn = ((id)self.scheduledOn == [NSNull null]) ? nil : self.scheduledOn;
 
     managedObject.startedOn = ((id)self.startedOn == [NSNull null]) ? nil : self.startedOn;
-
-    managedObject.status = ((id)self.status == [NSNull null]) ? nil : self.status;
 
     // destination entity Activity is not directly cacheable, so delete it and create the replacement
     if (managedObject.activity) {
