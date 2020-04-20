@@ -637,13 +637,12 @@ NSTimeInterval kSBBDelayForRetries = 5. * 60.; // at least 5 minutes, actually w
           };
         NSURL *fileUrl = [NSURL fileURLWithPath:uploadFileURL];
         [self.networkManager uploadFile:fileUrl httpHeaders:uploadHeaders toUrl:uploadSession.url taskDescription:uploadFileURL completion:^(NSURLSessionTask *task, NSHTTPURLResponse *response, NSError *error) {
-#if DEBUG
             if (error || response.statusCode >= 300) {
                 NSLog(@"Error uploading to S3 for upload ID %@\nHTTP status: %@\n%@", uploadSession.id, @(response.statusCode), error);
             } else {
                 NSLog(@"Successfully uploaded to S3 for upload ID %@", uploadSession.id);
+                [[NSNotificationCenter defaultCenter]postNotificationName:@"APCUploadCompleteNotification" object:nil];
             }
-#endif
             [self uploadedFileToS3WithTask:(NSURLSessionUploadTask *)task response:response error:error];
         }];
     } else {
